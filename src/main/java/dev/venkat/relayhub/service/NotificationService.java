@@ -6,6 +6,8 @@ import dev.venkat.relayhub.dto.response.NotificationResponse;
 import dev.venkat.relayhub.entity.Notification;
 import dev.venkat.relayhub.entity.User;
 import dev.venkat.relayhub.enums.NotificationStatus;
+import dev.venkat.relayhub.exception.NotificationNotFoundException;
+import dev.venkat.relayhub.exception.UserNotFoundException;
 import dev.venkat.relayhub.repository.NotificationRepository;
 import dev.venkat.relayhub.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -26,7 +28,7 @@ public class NotificationService {
     public NotificationResponse schedule(ScheduleNotificationRequest request) {
 
         User user = userRepository.findById(request.userId())
-                .orElseThrow(() -> new IllegalArgumentException("User not found with ID: " + request.userId()));
+                .orElseThrow(() -> new UserNotFoundException("User not found with ID: " + request.userId()));
 
         Notification notification = Notification.builder()
                 .user(user)
@@ -39,7 +41,7 @@ public class NotificationService {
 
         Notification saved = notificationRepository.save(notification);
 
-        historyService.logHistory(saved, null, "Notification scheduled by client", null);
+        historyService.logHistory(saved, null, saved.getStatus(),"Notification scheduled by client", null);
 
         return mapToResponse(saved);
     }
@@ -47,12 +49,8 @@ public class NotificationService {
     @Transactional(readOnly = true)
     public NotificationResponse getNotification(Long notificationId, Long userId) {
 
-        if (!userRepository.existsById(userId)) {
-            throw new RuntimeException("User not found.");
-        }
-
         Notification notification = notificationRepository.findByIdAndUserId(notificationId, userId)
-                .orElseThrow(() -> new IllegalArgumentException("Notification not found or access denied"));
+                .orElseThrow(() -> new NotificationNotFoundException("Notification not found or access denied."));
 
         return mapToResponse(notification);
     }
@@ -61,7 +59,7 @@ public class NotificationService {
         return new NotificationResponse(
                 notification.getId(),
                 notification.getTargetUrl(),
-                notification.getStatus().name(),
+                notification.getStatus(),
                 notification.getRetryCount(),
                 notification.getScheduledTime(),
                 notification.getLastFailureReason()
