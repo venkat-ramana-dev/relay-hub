@@ -15,11 +15,11 @@ public class NotificationHistoryService {
     private final NotificationHistoryRepository historyRepository;
 
     @Transactional
-    public void logHistory(Notification notification, NotificationStatus oldStatus, String message, Integer responseCode) {
+    public void logHistory(Notification notification, NotificationStatus oldStatus, NotificationStatus newStatus, String message, Integer responseCode) {
         NotificationHistory history = NotificationHistory.builder()
                 .notification(notification)
                 .oldStatus(oldStatus)
-                .newStatus(notification.getStatus())
+                .newStatus(newStatus)
                 .message(message)
                 .responseCode(responseCode)
                 .build();

@@ -7,6 +7,7 @@ import dev.venkat.relayhub.enums.Role;
 import dev.venkat.relayhub.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -14,6 +15,7 @@ public class UserService {
 
     private final UserRepository userRepository;
 
+    @Transactional
     public CreateUserResponse createUser(CreateUserRequest request) {
 
         if (userRepository.existsByEmail(request.email())) {
@@ -24,7 +26,7 @@ public class UserService {
                 .name(request.name())
                 .email(request.email())
                 .password(request.password())
-                .role(Role.USER)   // or Role.USER if you change the entity to enum
+                .role(Role.USER)
                 .build();
 
         User savedUser = userRepository.save(user);

@@ -39,17 +39,13 @@ public class NotificationService {
 
         Notification saved = notificationRepository.save(notification);
 
-        historyService.logHistory(saved, null, "Notification scheduled by client", null);
+        historyService.logHistory(saved, null, saved.getStatus(),"Notification scheduled by client", null);
 
         return mapToResponse(saved);
     }
 
     @Transactional(readOnly = true)
     public NotificationResponse getNotification(Long notificationId, Long userId) {
-
-        if (!userRepository.existsById(userId)) {
-            throw new RuntimeException("User not found.");
-        }
 
         Notification notification = notificationRepository.findByIdAndUserId(notificationId, userId)
                 .orElseThrow(() -> new IllegalArgumentException("Notification not found or access denied"));
@@ -61,7 +57,7 @@ public class NotificationService {
         return new NotificationResponse(
                 notification.getId(),
                 notification.getTargetUrl(),
-                notification.getStatus().name(),
+                notification.getStatus(),
                 notification.getRetryCount(),
                 notification.getScheduledTime(),
                 notification.getLastFailureReason()
