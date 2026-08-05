@@ -4,6 +4,7 @@ import dev.venkat.relayhub.dto.request.CreateUserRequest;
 import dev.venkat.relayhub.dto.response.CreateUserResponse;
 import dev.venkat.relayhub.entity.User;
 import dev.venkat.relayhub.enums.Role;
+import dev.venkat.relayhub.exception.DuplicateEmailException;
 import dev.venkat.relayhub.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -19,7 +20,7 @@ public class UserService {
     public CreateUserResponse createUser(CreateUserRequest request) {
 
         if (userRepository.existsByEmail(request.email())) {
-            throw new RuntimeException("Email already exists.");
+            throw new DuplicateEmailException("Email already exists.");
         }
 
         User user = User.builder()

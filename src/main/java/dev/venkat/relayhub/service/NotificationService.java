@@ -6,6 +6,8 @@ import dev.venkat.relayhub.dto.response.NotificationResponse;
 import dev.venkat.relayhub.entity.Notification;
 import dev.venkat.relayhub.entity.User;
 import dev.venkat.relayhub.enums.NotificationStatus;
+import dev.venkat.relayhub.exception.NotificationNotFoundException;
+import dev.venkat.relayhub.exception.UserNotFoundException;
 import dev.venkat.relayhub.repository.NotificationRepository;
 import dev.venkat.relayhub.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -26,7 +28,7 @@ public class NotificationService {
     public NotificationResponse schedule(ScheduleNotificationRequest request) {
 
         User user = userRepository.findById(request.userId())
-                .orElseThrow(() -> new IllegalArgumentException("User not found with ID: " + request.userId()));
+                .orElseThrow(() -> new UserNotFoundException("User not found with ID: " + request.userId()));
 
         Notification notification = Notification.builder()
                 .user(user)
@@ -48,7 +50,7 @@ public class NotificationService {
     public NotificationResponse getNotification(Long notificationId, Long userId) {
 
         Notification notification = notificationRepository.findByIdAndUserId(notificationId, userId)
-                .orElseThrow(() -> new IllegalArgumentException("Notification not found or access denied"));
+                .orElseThrow(() -> new NotificationNotFoundException("Notification not found or access denied."));
 
         return mapToResponse(notification);
     }
