@@ -28,7 +28,7 @@ CREATE TABLE notification_history (
     old_status VARCHAR(50),
     new_status VARCHAR(50) NOT NULL,
     response_code INT,
-    reason TEXT,
+    message TEXT,
     changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_history_notification FOREIGN KEY (notification_id) REFERENCES notifications(id) ON DELETE CASCADE
 );

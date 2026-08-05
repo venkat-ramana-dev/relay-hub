@@ -35,7 +35,7 @@ public class NotificationHistory {
     private Integer responseCode;
 
     @Column(columnDefinition = "TEXT")
-    private String reason;
+    private String message;
 
     @CreationTimestamp
     @Column(name = "changed_at", updatable = false)
