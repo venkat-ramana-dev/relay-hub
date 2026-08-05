@@ -7,9 +7,11 @@ import dev.venkat.relayhub.enums.Role;
 import dev.venkat.relayhub.exception.DuplicateEmailException;
 import dev.venkat.relayhub.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class UserService {
@@ -19,8 +21,10 @@ public class UserService {
     @Transactional
     public CreateUserResponse createUser(CreateUserRequest request) {
 
+        log.info("Creating new user with email: {}",request.email());
+
         if (userRepository.existsByEmail(request.email())) {
-            throw new DuplicateEmailException("Email already exists.");
+            throw new DuplicateEmailException("Email already exists: " + request.email());
         }
 
         User user = User.builder()
@@ -31,6 +35,8 @@ public class UserService {
                 .build();
 
         User savedUser = userRepository.save(user);
+
+        log.info("New User successfully created with id: {}",savedUser.getId());
 
         return CreateUserResponse.builder()
                 .id(savedUser.getId())
