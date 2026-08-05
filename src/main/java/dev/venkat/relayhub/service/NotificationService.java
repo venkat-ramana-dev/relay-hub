@@ -11,11 +11,13 @@ import dev.venkat.relayhub.exception.UserNotFoundException;
 import dev.venkat.relayhub.repository.NotificationRepository;
 import dev.venkat.relayhub.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class NotificationService {
@@ -26,6 +28,8 @@ public class NotificationService {
 
     @Transactional
     public NotificationResponse schedule(ScheduleNotificationRequest request) {
+
+        log.info("Scheduling Notification for userId: {} targetUrl: {}", request.userId(), request.targetUrl());
 
         User user = userRepository.findById(request.userId())
                 .orElseThrow(() -> new UserNotFoundException("User not found with ID: " + request.userId()));
@@ -49,8 +53,10 @@ public class NotificationService {
     @Transactional(readOnly = true)
     public NotificationResponse getNotification(Long notificationId, Long userId) {
 
+        log.info("Attempting to fetch notification {} for user {}", notificationId, userId);
+
         Notification notification = notificationRepository.findByIdAndUserId(notificationId, userId)
-                .orElseThrow(() -> new NotificationNotFoundException("Notification not found or access denied."));
+                .orElseThrow(() -> new NotificationNotFoundException("Notification not found or access denied. Notification Id: " + notificationId + " User Id: " + userId));
 
         return mapToResponse(notification);
     }
