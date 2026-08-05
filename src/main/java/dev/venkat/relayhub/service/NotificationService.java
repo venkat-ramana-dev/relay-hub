@@ -44,6 +44,19 @@ public class NotificationService {
         return mapToResponse(saved);
     }
 
+    @Transactional(readOnly = true)
+    public NotificationResponse getNotification(Long notificationId, Long userId) {
+
+        if (!userRepository.existsById(userId)) {
+            throw new RuntimeException("User not found.");
+        }
+
+        Notification notification = notificationRepository.findByIdAndUserId(notificationId, userId)
+                .orElseThrow(() -> new IllegalArgumentException("Notification not found or access denied"));
+
+        return mapToResponse(notification);
+    }
+
     private NotificationResponse mapToResponse(Notification notification) {
         return new NotificationResponse(
                 notification.getId(),

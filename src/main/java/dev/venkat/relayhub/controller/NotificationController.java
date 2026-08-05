@@ -23,4 +23,13 @@ public class NotificationController {
         NotificationResponse response = notificationService.schedule(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
+
+    @GetMapping("/{notificationId}")
+    public ResponseEntity<NotificationResponse> getNotification(
+            @PathVariable Long notificationId,
+            @RequestHeader("X-User-Id") Long userId) {
+
+        NotificationResponse response = notificationService.getNotification(notificationId, userId);
+        return ResponseEntity.ok(response);
+    }
 }
