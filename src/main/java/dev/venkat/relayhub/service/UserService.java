@@ -51,19 +51,21 @@ public class UserService {
     }
 
     @Transactional
-    public User createAdmin(AuthRegisterRequest request) {
+    public User createAdmin(AuthRegisterRequest request, String rawApiKey) {
         log.info("Creating new ADMIN with email {}", request.email());
 
         if (userRepository.existsByEmail(request.email())) {
             throw new DuplicateEmailException("Email already exists: " + request.email());
         }
 
+        String hashedApiKey = SecurityUtil.hashApiKey(rawApiKey);
+
         User admin = User.builder()
                 .name(request.name())
                 .email(request.email())
                 .password(passwordEncoder.encode(request.password()))
                 .role(Role.ADMIN)
-                .apiKey(UUID.randomUUID().toString().replace("-", ""))
+                .apiKey(hashedApiKey)
                 .build();
 
         User savedAdmin = userRepository.save(admin);
