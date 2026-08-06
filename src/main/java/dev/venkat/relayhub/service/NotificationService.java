@@ -56,7 +56,7 @@ public class NotificationService {
         log.info("Attempting to fetch notification {} of user {}", notificationId, userEmail);
 
         Notification notification = notificationRepository.findByIdAndUser_Email(notificationId, userEmail)
-                .orElseThrow(() -> new NotificationNotFoundException("Notification not found or access denied. Notification Id: " + notificationId + " User Email: " + userEmail));
+                .orElseThrow(() -> new NotificationNotFoundException("Notification not found or access denied. Notification Id: " + notificationId));
 
         return mapToResponse(notification);
     }
