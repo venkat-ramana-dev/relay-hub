@@ -1,13 +1,14 @@
 package dev.venkat.relayhub.service;
 
-import dev.venkat.relayhub.dto.request.CreateUserRequest;
-import dev.venkat.relayhub.dto.response.CreateUserResponse;
+import dev.venkat.relayhub.dto.request.AuthRegisterRequest;
 import dev.venkat.relayhub.entity.User;
 import dev.venkat.relayhub.enums.Role;
 import dev.venkat.relayhub.exception.DuplicateEmailException;
+import dev.venkat.relayhub.exception.UserNotFoundException;
 import dev.venkat.relayhub.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,8 +19,10 @@ public class UserService {
 
     private final UserRepository userRepository;
 
+    private final PasswordEncoder passwordEncoder;
+
     @Transactional
-    public CreateUserResponse createUser(CreateUserRequest request) {
+    public User createUser(AuthRegisterRequest request) {
 
         log.info("Creating new user with email: {}",request.email());
 
@@ -30,7 +33,7 @@ public class UserService {
         User user = User.builder()
                 .name(request.name())
                 .email(request.email())
-                .password(request.password())
+                .password(passwordEncoder.encode(request.password()))
                 .role(Role.USER)
                 .build();
 
@@ -38,12 +41,13 @@ public class UserService {
 
         log.info("New User successfully created with id: {}",savedUser.getId());
 
-        return CreateUserResponse.builder()
-                .id(savedUser.getId())
-                .name(savedUser.getName())
-                .email(savedUser.getEmail())
-                .role(savedUser.getRole())
-                .build();
+        return savedUser;
+    }
+
+    @Transactional(readOnly = true)
+    public User getUserByEmail(String email) {
+        return userRepository.findByEmail(email)
+                .orElseThrow(() -> new UserNotFoundException("User not found with email: " + email));
     }
 
 }

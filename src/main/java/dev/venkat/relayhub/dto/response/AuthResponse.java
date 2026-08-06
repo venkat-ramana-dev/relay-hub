@@ -1,10 +1,9 @@
 package dev.venkat.relayhub.dto.response;
 
 import dev.venkat.relayhub.enums.Role;
-import lombok.Builder;
 
-@Builder
-public record CreateUserResponse (
+public record AuthResponse(
+        String token,
         Long id,
         String name,
         String email,
