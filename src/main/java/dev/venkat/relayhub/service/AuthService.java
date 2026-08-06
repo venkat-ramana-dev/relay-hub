@@ -2,7 +2,8 @@ package dev.venkat.relayhub.service;
 
 import dev.venkat.relayhub.dto.request.AuthLoginRequest;
 import dev.venkat.relayhub.dto.request.AuthRegisterRequest;
-import dev.venkat.relayhub.dto.response.AuthResponse;
+import dev.venkat.relayhub.dto.response.AuthRegisterResponse;
+import dev.venkat.relayhub.dto.response.AuthLoginResponse;
 import dev.venkat.relayhub.entity.User;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,16 +20,16 @@ public class AuthService {
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
 
-    public AuthResponse register(AuthRegisterRequest request) {
+    public AuthRegisterResponse register(AuthRegisterRequest request) {
 
         log.info("Processing registration for email: {}", request.email());
 
         User user = userService.createUser(request);
         String token = jwtService.generateToken(user.getEmail());
-        return new AuthResponse(token, user.getName(), user.getEmail(), user.getRole());
+        return new AuthRegisterResponse(token, user.getName(), user.getEmail(), user.getRole(), user.getApiKey());
     }
 
-    public AuthResponse login(AuthLoginRequest request) {
+    public AuthLoginResponse login(AuthLoginRequest request) {
         log.info("Processing login for email: {}", request.email());
 
         authenticationManager.authenticate(
@@ -36,6 +37,6 @@ public class AuthService {
         );
         User user = userService.getUserByEmail(request.email());
         String token = jwtService.generateToken(user.getEmail());
-        return new AuthResponse(token, user.getName(), user.getEmail(), user.getRole());
+        return new AuthLoginResponse(token, user.getName(), user.getEmail(), user.getRole());
     }
 }

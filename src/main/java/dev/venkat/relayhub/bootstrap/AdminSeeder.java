@@ -9,6 +9,8 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
+import java.util.UUID;
+
 @Component
 @RequiredArgsConstructor
 @Slf4j
@@ -28,6 +30,7 @@ public class AdminSeeder implements CommandLineRunner {
                     .email("admin@relayhub.dev")
                     .password(passwordEncoder.encode("admin123"))
                     .role(Role.ADMIN)
+                    .apiKey(UUID.randomUUID().toString().replace("-", ""))
                     .build();
 
             userRepository.save(rootAdmin);

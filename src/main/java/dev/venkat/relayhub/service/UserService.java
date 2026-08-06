@@ -12,6 +12,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.UUID;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -35,6 +37,7 @@ public class UserService {
                 .email(request.email())
                 .password(passwordEncoder.encode(request.password()))
                 .role(Role.USER)
+                .apiKey(UUID.randomUUID().toString().replace("-", ""))
                 .build();
 
         User savedUser = userRepository.save(user);
@@ -57,6 +60,7 @@ public class UserService {
                 .email(request.email())
                 .password(passwordEncoder.encode(request.password()))
                 .role(Role.ADMIN)
+                .apiKey(UUID.randomUUID().toString().replace("-", ""))
                 .build();
 
         User savedAdmin = userRepository.save(admin);
