@@ -1,15 +1,19 @@
 package dev.venkat.relayhub.service;
 
-import dev.venkat.relayhub.dto.request.CreateUserRequest;
-import dev.venkat.relayhub.dto.response.CreateUserResponse;
+import dev.venkat.relayhub.dto.request.AuthRegisterRequest;
 import dev.venkat.relayhub.entity.User;
 import dev.venkat.relayhub.enums.Role;
 import dev.venkat.relayhub.exception.DuplicateEmailException;
+import dev.venkat.relayhub.exception.UserNotFoundException;
 import dev.venkat.relayhub.repository.UserRepository;
+import dev.venkat.relayhub.util.SecurityUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.UUID;
 
 @Slf4j
 @Service
@@ -18,8 +22,10 @@ public class UserService {
 
     private final UserRepository userRepository;
 
+    private final PasswordEncoder passwordEncoder;
+
     @Transactional
-    public CreateUserResponse createUser(CreateUserRequest request) {
+    public User createUser(AuthRegisterRequest request, String rawApiKey) {
 
         log.info("Creating new user with email: {}",request.email());
 
@@ -27,23 +33,49 @@ public class UserService {
             throw new DuplicateEmailException("Email already exists: " + request.email());
         }
 
+        String hashedApiKey = SecurityUtil.hashApiKey(rawApiKey);
+
         User user = User.builder()
                 .name(request.name())
                 .email(request.email())
-                .password(request.password())
+                .password(passwordEncoder.encode(request.password()))
                 .role(Role.USER)
+                .apiKey(hashedApiKey)
                 .build();
 
         User savedUser = userRepository.save(user);
 
         log.info("New User successfully created with id: {}",savedUser.getId());
 
-        return CreateUserResponse.builder()
-                .id(savedUser.getId())
-                .name(savedUser.getName())
-                .email(savedUser.getEmail())
-                .role(savedUser.getRole())
+        return savedUser;
+    }
+
+    @Transactional
+    public User createAdmin(AuthRegisterRequest request) {
+        log.info("Creating new ADMIN with email {}", request.email());
+
+        if (userRepository.existsByEmail(request.email())) {
+            throw new DuplicateEmailException("Email already exists: " + request.email());
+        }
+
+        User admin = User.builder()
+                .name(request.name())
+                .email(request.email())
+                .password(passwordEncoder.encode(request.password()))
+                .role(Role.ADMIN)
+                .apiKey(UUID.randomUUID().toString().replace("-", ""))
                 .build();
+
+        User savedAdmin = userRepository.save(admin);
+        log.info("New ADMIN successfully created with id: {}", savedAdmin.getId());
+
+        return savedAdmin;
+    }
+
+    @Transactional(readOnly = true)
+    public User getUserByEmail(String email) {
+        return userRepository.findByEmail(email)
+                .orElseThrow(() -> new UserNotFoundException("User not found with email: " + email));
     }
 
 }

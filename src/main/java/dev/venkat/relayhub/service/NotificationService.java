@@ -27,12 +27,12 @@ public class NotificationService {
     private final NotificationHistoryService historyService;
 
     @Transactional
-    public NotificationResponse schedule(ScheduleNotificationRequest request) {
+    public NotificationResponse schedule(ScheduleNotificationRequest request, String userEmail) {
 
-        log.info("Scheduling Notification for userId: {} targetUrl: {}", request.userId(), request.targetUrl());
+        log.info("Scheduling Notification for user: {}", userEmail);
 
-        User user = userRepository.findById(request.userId())
-                .orElseThrow(() -> new UserNotFoundException("User not found with ID: " + request.userId()));
+        User user = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new UserNotFoundException("User not found with Email: " + userEmail));
 
         Notification notification = Notification.builder()
                 .user(user)
@@ -51,12 +51,12 @@ public class NotificationService {
     }
 
     @Transactional(readOnly = true)
-    public NotificationResponse getNotification(Long notificationId, Long userId) {
+    public NotificationResponse getNotification(Long notificationId, String userEmail) {
 
-        log.info("Attempting to fetch notification {} for user {}", notificationId, userId);
+        log.info("Attempting to fetch notification {} of user {}", notificationId, userEmail);
 
-        Notification notification = notificationRepository.findByIdAndUserId(notificationId, userId)
-                .orElseThrow(() -> new NotificationNotFoundException("Notification not found or access denied. Notification Id: " + notificationId + " User Id: " + userId));
+        Notification notification = notificationRepository.findByIdAndUser_Email(notificationId, userEmail)
+                .orElseThrow(() -> new NotificationNotFoundException("Notification not found or access denied. Notification Id: " + notificationId));
 
         return mapToResponse(notification);
     }

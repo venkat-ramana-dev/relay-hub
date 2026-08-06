@@ -9,8 +9,6 @@ import tools.jackson.databind.JsonNode;
 import java.time.LocalDateTime;
 
 public record ScheduleNotificationRequest(
-        @NotNull(message = "User ID must be provided")
-        Long userId,
 
         @NotBlank(message = "Target URL cannot be blank")
         @URL(message = "Target URL must be a valid HTTP/HTTPS URL")
