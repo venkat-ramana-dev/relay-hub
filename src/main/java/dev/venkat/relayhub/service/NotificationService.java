@@ -65,10 +65,14 @@ public class NotificationService {
         return new NotificationResponse(
                 notification.getId(),
                 notification.getTargetUrl(),
+                notification.getPayload(),
                 notification.getStatus(),
                 notification.getRetryCount(),
                 notification.getScheduledTime(),
-                notification.getLastFailureReason()
+                notification.getNextRetryTime(),
+                notification.getLastFailureReason(),
+                notification.getCreatedAt(),
+                notification.getUpdatedAt()
         );
     }
 }
