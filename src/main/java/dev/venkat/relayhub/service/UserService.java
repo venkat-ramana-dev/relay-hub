@@ -44,6 +44,27 @@ public class UserService {
         return savedUser;
     }
 
+    @Transactional
+    public User createAdmin(AuthRegisterRequest request) {
+        log.info("Creating new ADMIN with email {}", request.email());
+
+        if (userRepository.existsByEmail(request.email())) {
+            throw new DuplicateEmailException("Email already exists: " + request.email());
+        }
+
+        User admin = User.builder()
+                .name(request.name())
+                .email(request.email())
+                .password(passwordEncoder.encode(request.password()))
+                .role(Role.ADMIN)
+                .build();
+
+        User savedAdmin = userRepository.save(admin);
+        log.info("New ADMIN successfully created with id: {}", savedAdmin.getId());
+
+        return savedAdmin;
+    }
+
     @Transactional(readOnly = true)
     public User getUserByEmail(String email) {
         return userRepository.findByEmail(email)
