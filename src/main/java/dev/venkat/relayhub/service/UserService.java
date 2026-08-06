@@ -6,6 +6,7 @@ import dev.venkat.relayhub.enums.Role;
 import dev.venkat.relayhub.exception.DuplicateEmailException;
 import dev.venkat.relayhub.exception.UserNotFoundException;
 import dev.venkat.relayhub.repository.UserRepository;
+import dev.venkat.relayhub.util.SecurityUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -24,7 +25,7 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
 
     @Transactional
-    public User createUser(AuthRegisterRequest request) {
+    public User createUser(AuthRegisterRequest request, String rawApiKey) {
 
         log.info("Creating new user with email: {}",request.email());
 
@@ -32,12 +33,14 @@ public class UserService {
             throw new DuplicateEmailException("Email already exists: " + request.email());
         }
 
+        String hashedApiKey = SecurityUtil.hashApiKey(rawApiKey);
+
         User user = User.builder()
                 .name(request.name())
                 .email(request.email())
                 .password(passwordEncoder.encode(request.password()))
                 .role(Role.USER)
-                .apiKey(UUID.randomUUID().toString().replace("-", ""))
+                .apiKey(hashedApiKey)
                 .build();
 
         User savedUser = userRepository.save(user);

@@ -11,6 +11,8 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.stereotype.Service;
 
+import java.util.UUID;
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -24,9 +26,11 @@ public class AuthService {
 
         log.info("Processing registration for email: {}", request.email());
 
-        User user = userService.createUser(request);
+        String rawApiKey = UUID.randomUUID().toString().replace("-", "");
+
+        User user = userService.createUser(request, rawApiKey);
         String token = jwtService.generateToken(user.getEmail());
-        return new AuthRegisterResponse(token, user.getName(), user.getEmail(), user.getRole(), user.getApiKey());
+        return new AuthRegisterResponse(token, user.getName(), user.getEmail(), user.getRole(), rawApiKey);
     }
 
     public AuthLoginResponse login(AuthLoginRequest request) {

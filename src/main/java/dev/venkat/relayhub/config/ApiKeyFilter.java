@@ -3,6 +3,7 @@ package dev.venkat.relayhub.config;
 import dev.venkat.relayhub.entity.User;
 import dev.venkat.relayhub.entity.UserPrincipal;
 import dev.venkat.relayhub.repository.UserRepository;
+import dev.venkat.relayhub.util.SecurityUtil;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -29,11 +30,13 @@ public class ApiKeyFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
 
-        String apiKey = request.getHeader(API_KEY_HEADER);
+        String rawApiKey = request.getHeader(API_KEY_HEADER);
 
-        if (apiKey != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+        if (rawApiKey != null && SecurityContextHolder.getContext().getAuthentication() == null) {
 
-            Optional<User> userOptional = userRepository.findByApiKey(apiKey);
+            String hashedApiKey = SecurityUtil.hashApiKey(rawApiKey);
+
+            Optional<User> userOptional = userRepository.findByApiKey(hashedApiKey);
 
             if (userOptional.isPresent()) {
                 User user = userOptional.get();
