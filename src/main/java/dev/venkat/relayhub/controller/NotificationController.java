@@ -7,6 +7,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -20,16 +21,21 @@ public class NotificationController {
     public ResponseEntity<NotificationResponse> scheduleNotification(
             @Valid @RequestBody ScheduleNotificationRequest request) {
 
-        NotificationResponse response = notificationService.schedule(request);
+        String currentEmail = SecurityContextHolder.getContext().getAuthentication().getName();
+
+        NotificationResponse response = notificationService.schedule(request, currentEmail);
+
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @GetMapping("/{notificationId}")
     public ResponseEntity<NotificationResponse> getNotification(
-            @PathVariable Long notificationId,
-            @RequestHeader("X-User-Id") Long userId) {
+            @PathVariable Long notificationId) {
 
-        NotificationResponse response = notificationService.getNotification(notificationId, userId);
+        String currentEmail = SecurityContextHolder.getContext().getAuthentication().getName();
+
+        NotificationResponse response = notificationService.getNotification(notificationId, currentEmail);
+
         return ResponseEntity.ok(response);
     }
 }
