@@ -24,7 +24,7 @@ public class DeliveryService {
                 notification.getId(), notification.getTargetUrl());
 
         try {
-            // Fire the HTTP POST request
+
             ResponseEntity<Void> response = webhookRestClient.post()
                     .uri(notification.getTargetUrl())
                     .contentType(MediaType.APPLICATION_JSON)
@@ -39,20 +39,17 @@ public class DeliveryService {
             return DeliveryResult.success(response.getStatusCode().value());
 
         } catch (HttpClientErrorException | HttpServerErrorException e) {
-            // Target server responded, but it was an error (4xx or 5xx)
+
             String rawBody = e.getResponseBodyAsString();
 
-            // 1. Clean up empty bodies
             String bodySnippet = (rawBody != null && !rawBody.isBlank())
                     ? rawBody
                     : "No response body provided";
 
-            // 2. Truncate to protect your database (assuming standard 255 varchar limit)
             if (bodySnippet.length() > 200) {
                 bodySnippet = bodySnippet.substring(0, 200) + "...";
             }
 
-            // 3. Format beautifully: "HTTP 400: {"message":"Webhook disabled"}"
             String errorMessage = String.format("HTTP %d: %s", e.getStatusCode().value(), bodySnippet);
 
             log.warn("Target server rejected Notification ID: {} with status: {}",
@@ -61,13 +58,11 @@ public class DeliveryService {
             return DeliveryResult.failure(e.getStatusCode().value(), errorMessage);
 
         } catch (ResourceAccessException e) {
-            // Network failures (Timeout, DNS not found, Connection Refused)
             log.error("Network error delivering Notification ID: {}: {}",
                     notification.getId(), e.getMessage());
             return DeliveryResult.failure(null, "Network/Timeout error: " + e.getMessage());
 
         } catch (Exception e) {
-            // Catch-all for any other unexpected exceptions
             log.error("Unexpected error delivering Notification ID: {}", notification.getId(), e);
             return DeliveryResult.failure(null, "Unexpected error: " + e.getMessage());
         }

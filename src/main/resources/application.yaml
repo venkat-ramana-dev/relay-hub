@@ -32,3 +32,5 @@ logging:
 relayhub:
   worker:
     poll-interval: 5000
+  notification:
+    max-retries: 5

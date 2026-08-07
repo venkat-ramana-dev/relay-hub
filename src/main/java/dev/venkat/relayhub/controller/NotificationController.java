@@ -7,8 +7,9 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+
+import java.security.Principal;
 
 @RestController
 @RequestMapping("/api/notifications")
@@ -19,20 +20,23 @@ public class NotificationController {
 
     @PostMapping
     public ResponseEntity<NotificationResponse> scheduleNotification(
-            @Valid @RequestBody ScheduleNotificationRequest request) {
+            @RequestHeader(value = "Idempotency-Key", required = true) String idempotencyKey,
+            @Valid @RequestBody ScheduleNotificationRequest request,
+            Principal principal) {
 
-        String currentEmail = SecurityContextHolder.getContext().getAuthentication().getName();
+        String currentEmail = principal.getName();
 
-        NotificationResponse response = notificationService.schedule(request, currentEmail);
+        NotificationResponse response = notificationService.schedule(request, currentEmail, idempotencyKey);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @GetMapping("/{notificationId}")
     public ResponseEntity<NotificationResponse> getNotification(
-            @PathVariable Long notificationId) {
+            @PathVariable Long notificationId,
+            Principal principal) {
 
-        String currentEmail = SecurityContextHolder.getContext().getAuthentication().getName();
+        String currentEmail = principal.getName();
 
         NotificationResponse response = notificationService.getNotification(notificationId, currentEmail);
 

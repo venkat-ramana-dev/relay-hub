@@ -6,6 +6,7 @@ import dev.venkat.relayhub.enums.NotificationStatus;
 import dev.venkat.relayhub.repository.NotificationRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,7 +21,8 @@ public class NotificationProcessor {
     private final NotificationRepository notificationRepository;
     private final NotificationHistoryService historyService;
 
-    private static final int MAX_RETRIES = 5;
+    @Value("${relayhub.notification.max-retries:5}")
+    private int maxRetries;
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public boolean markProcessing(Notification notification) {
@@ -62,7 +64,7 @@ public class NotificationProcessor {
             return;
         }
 
-        if (n.getRetryCount() >= MAX_RETRIES) {
+        if (n.getRetryCount() >= maxRetries) {
             markDead(n, result);
             return;
         }
@@ -96,17 +98,23 @@ public class NotificationProcessor {
 
     private void handleRetry(Notification notification, DeliveryResult result) {
         NotificationStatus oldStatus = notification.getStatus();
+
+        int currentRetryCount = notification.getRetryCount();
+        long backoffMinutes = (long) Math.pow(2, currentRetryCount);
+
         notification.setStatus(NotificationStatus.RETRYING);
-        notification.setRetryCount(notification.getRetryCount() + 1);
+        notification.setRetryCount(currentRetryCount + 1);
         notification.setLastFailureReason(result.errorMessage());
 
-        notification.setNextRetryTime(LocalDateTime.now().plusMinutes(1));
+        notification.setNextRetryTime(LocalDateTime.now().plusMinutes(backoffMinutes));
 
         notificationRepository.save(notification);
 
         historyService.logHistory(
                 notification, oldStatus, NotificationStatus.RETRYING, result.errorMessage(), result.statusCode()
         );
-        log.warn("Notification {} scheduled for retry", notification.getId());
+
+        log.warn("Notification {} scheduled for retry {} in {} minute(s)",
+                notification.getId(), currentRetryCount + 1, backoffMinutes);
     }
 }
