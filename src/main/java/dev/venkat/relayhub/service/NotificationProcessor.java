@@ -6,6 +6,7 @@ import dev.venkat.relayhub.enums.NotificationStatus;
 import dev.venkat.relayhub.repository.NotificationRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,7 +21,8 @@ public class NotificationProcessor {
     private final NotificationRepository notificationRepository;
     private final NotificationHistoryService historyService;
 
-    private static final int MAX_RETRIES = 5;
+    @Value("${relayhub.notification.max-retries:5}")
+    private int maxRetries;
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public boolean markProcessing(Notification notification) {
@@ -62,7 +64,7 @@ public class NotificationProcessor {
             return;
         }
 
-        if (n.getRetryCount() >= MAX_RETRIES) {
+        if (n.getRetryCount() >= maxRetries) {
             markDead(n, result);
             return;
         }
