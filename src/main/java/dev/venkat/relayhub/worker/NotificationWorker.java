@@ -21,7 +21,7 @@ public class NotificationWorker {
 
     private final NotificationRepository notificationRepository;
     private final NotificationProcessor notificationProcessor;
-    private final DeliveryService deliveryService; // Injected here now!
+    private final DeliveryService deliveryService;
 
     @Scheduled(fixedDelayString = "${relayhub.worker.poll-interval}")
     public void pollNotifications() {
