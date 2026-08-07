@@ -26,7 +26,7 @@ public class NotificationController {
 
         String currentEmail = principal.getName();
 
-        NotificationResponse response = notificationService.schedule(request, currentEmail);
+        NotificationResponse response = notificationService.schedule(request, currentEmail, idempotencyKey);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
