@@ -39,6 +39,7 @@ public class DeliveryService {
             return DeliveryResult.success(response.getStatusCode().value());
 
         } catch (HttpClientErrorException | HttpServerErrorException e) {
+            // Target server responded, but it was an error (4xx or 5xx)
             String rawBody = e.getResponseBodyAsString();
 
             // 1. Clean up empty bodies

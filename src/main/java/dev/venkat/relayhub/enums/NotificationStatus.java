@@ -8,8 +8,6 @@ public enum NotificationStatus {
 
     SUCCESS,
 
-    FAILED,
-
     RETRYING,
 
     DEAD
