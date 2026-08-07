@@ -1,16 +1,24 @@
 package dev.venkat.relayhub.config;
 
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
 
+import java.time.Duration;
+
+@Configuration
 public class RestClientConfig {
 
     @Bean
-    public RestClient webhookRestClient(RestClient.Builder builder) {
+    public RestClient webhookRestClient() {
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
-        factory.setConnectTimeout(5000);
-        factory.setReadTimeout(5000);
-        return builder.requestFactory(factory).build();
+
+        factory.setConnectTimeout(Duration.ofSeconds(5));
+        factory.setReadTimeout(Duration.ofSeconds(5));
+
+        return RestClient.builder()
+                .requestFactory(factory)
+                .build();
     }
 }
