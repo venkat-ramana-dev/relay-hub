@@ -26,7 +26,7 @@ public class NotificationWorker {
     @Scheduled(fixedDelayString = "${relayhub.worker.poll-interval}")
     public void pollNotifications() {
 
-        List<Notification> batch = fetchLockedBatch();
+        List<Notification> batch = notificationRepository.findPendingNotifications();
 
         if (!batch.isEmpty()) {
             log.info("Worker picked up {} notifications for processing", batch.size());
@@ -45,8 +45,4 @@ public class NotificationWorker {
         }
     }
 
-    @Transactional
-    protected List<Notification> fetchLockedBatch() {
-        return notificationRepository.findPendingNotifications();
-    }
 }
