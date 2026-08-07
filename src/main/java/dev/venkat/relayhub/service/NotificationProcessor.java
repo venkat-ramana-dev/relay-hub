@@ -96,17 +96,23 @@ public class NotificationProcessor {
 
     private void handleRetry(Notification notification, DeliveryResult result) {
         NotificationStatus oldStatus = notification.getStatus();
+
+        int currentRetryCount = notification.getRetryCount();
+        long backoffMinutes = (long) Math.pow(2, currentRetryCount);
+
         notification.setStatus(NotificationStatus.RETRYING);
-        notification.setRetryCount(notification.getRetryCount() + 1);
+        notification.setRetryCount(currentRetryCount + 1);
         notification.setLastFailureReason(result.errorMessage());
 
-        notification.setNextRetryTime(LocalDateTime.now().plusMinutes(1));
+        notification.setNextRetryTime(LocalDateTime.now().plusMinutes(backoffMinutes));
 
         notificationRepository.save(notification);
 
         historyService.logHistory(
                 notification, oldStatus, NotificationStatus.RETRYING, result.errorMessage(), result.statusCode()
         );
-        log.warn("Notification {} scheduled for retry", notification.getId());
+
+        log.warn("Notification {} scheduled for retry {} in {} minute(s)",
+                notification.getId(), currentRetryCount + 1, backoffMinutes);
     }
 }
