@@ -1,7 +1,9 @@
 package dev.venkat.relayhub.worker;
 
+import dev.venkat.relayhub.dto.internal.DeliveryResult;
 import dev.venkat.relayhub.entity.Notification;
 import dev.venkat.relayhub.repository.NotificationRepository;
+import dev.venkat.relayhub.service.DeliveryService;
 import dev.venkat.relayhub.service.NotificationProcessor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -9,6 +11,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Component
@@ -18,33 +21,32 @@ public class NotificationWorker {
 
     private final NotificationRepository notificationRepository;
     private final NotificationProcessor notificationProcessor;
+    private final DeliveryService deliveryService; // Injected here now!
 
-    @Scheduled(fixedRateString = "${relayhub.worker.poll-interval}")
+    @Scheduled(fixedDelayString = "${relayhub.worker.poll-interval}")
     public void pollNotifications() {
 
-        List<Notification> notifications = fetchLockedBatch();
+        List<Notification> batch = fetchLockedBatch();
 
-        if (notifications.isEmpty()) {
-            return;
+        if (!batch.isEmpty()) {
+            log.info("Worker picked up {} notifications for processing", batch.size());
         }
 
-        log.info("Worker found {} notification(s) to process.",
-                notifications.size());
-
-        for (Notification notification : notifications) {
+        for (Notification notification : batch) {
             try {
-                notificationProcessor.process(notification);
-            } catch (Exception ex) {
-                log.error("Failed processing notification {}",
-                        notification.getId(), ex);
+                boolean claimed = notificationProcessor.markProcessing(notification);
+                if (claimed) {
+                    DeliveryResult result = deliveryService.deliver(notification);
+                    notificationProcessor.finalizeDelivery(notification, result);
+                }
+            } catch (Exception e) {
+                log.error("Unhandled exception processing notification ID: {}", notification.getId(), e);
             }
         }
-
     }
 
     @Transactional
     protected List<Notification> fetchLockedBatch() {
         return notificationRepository.findPendingNotifications();
     }
-
 }

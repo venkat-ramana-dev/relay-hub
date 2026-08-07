@@ -13,6 +13,9 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
 
     Optional<Notification> findByIdAndUser_Email(Long id, String email);
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    Optional<Notification> findById(Long id);
+
     @Query(value = """
         SELECT *
         FROM notifications
