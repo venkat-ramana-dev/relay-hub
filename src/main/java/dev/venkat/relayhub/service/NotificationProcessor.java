@@ -49,22 +49,25 @@ public class NotificationProcessor {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void finalizeDelivery(Notification notification, DeliveryResult result) {
 
+        Notification n = notificationRepository.findById(notification.getId())
+                .orElseThrow(() -> new IllegalStateException("Notification missing during finalize"));
+
         if (result.success()) {
-            handleSuccess(notification, result);
+            handleSuccess(n, result);
             return;
         }
 
         if (result.statusCode() != null && result.statusCode() >= 400 && result.statusCode() < 500) {
-            markDead(notification, result);
+            markDead(n, result);
             return;
         }
 
-        if (notification.getRetryCount() >= MAX_RETRIES) {
-            markDead(notification, result);
+        if (n.getRetryCount() >= MAX_RETRIES) {
+            markDead(n, result);
             return;
         }
 
-        handleRetry(notification, result);
+        handleRetry(n, result);
     }
 
     private void handleSuccess(Notification notification, DeliveryResult result) {
