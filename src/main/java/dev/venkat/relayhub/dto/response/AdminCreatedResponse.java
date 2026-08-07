@@ -6,5 +6,6 @@ public record AdminCreatedResponse(
         String message,
         Long id,
         String email,
-        Role role
+        Role role,
+        String apiKey
 ) {}

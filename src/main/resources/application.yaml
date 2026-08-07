@@ -28,3 +28,7 @@ logging:
   level:
     org.hibernate.SQL: DEBUG
     org.hibernate.orm.jdbc.bind: TRACE
+
+relayhub:
+  worker:
+    poll-interval: 5000

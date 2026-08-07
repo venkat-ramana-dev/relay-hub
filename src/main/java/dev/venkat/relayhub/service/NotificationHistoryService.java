@@ -6,6 +6,7 @@ import dev.venkat.relayhub.enums.NotificationStatus;
 import dev.venkat.relayhub.repository.NotificationHistoryRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
@@ -14,7 +15,7 @@ public class NotificationHistoryService {
 
     private final NotificationHistoryRepository historyRepository;
 
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void logHistory(Notification notification, NotificationStatus oldStatus, NotificationStatus newStatus, String message, Integer responseCode) {
         NotificationHistory history = NotificationHistory.builder()
                 .notification(notification)

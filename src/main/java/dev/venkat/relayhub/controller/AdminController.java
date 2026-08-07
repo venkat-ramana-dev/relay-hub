@@ -11,6 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/admin")
@@ -22,13 +23,16 @@ public class AdminController {
     @PostMapping("/register")
     public ResponseEntity<AdminCreatedResponse> registerAdmin(@Valid @RequestBody AuthRegisterRequest request) {
 
-        User newAdmin = userService.createAdmin(request);
+        String rawApiKey = UUID.randomUUID().toString().replace("-", "");
+
+        User newAdmin = userService.createAdmin(request, rawApiKey);
 
         AdminCreatedResponse response = new AdminCreatedResponse(
                 "Admin created successfully",
                 newAdmin.getId(),
                 newAdmin.getEmail(),
-                newAdmin.getRole()
+                newAdmin.getRole(),
+                rawApiKey
         );
 
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
