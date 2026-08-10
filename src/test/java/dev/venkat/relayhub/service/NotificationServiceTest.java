@@ -1,5 +1,6 @@
 package dev.venkat.relayhub.service;
 
+import dev.venkat.relayhub.exception.NotificationNotFoundException;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import dev.venkat.relayhub.dto.request.ScheduleNotificationRequest;
@@ -185,6 +186,57 @@ class NotificationServiceTest {
 
             // Verify we attempted to save, but handled the failure gracefully
             verify(idempotencyRepository, times(1)).save(any(IdempotencyRecord.class));
+        }
+    }
+
+    @Nested
+    @DisplayName("getNotification() Tests")
+    class GetNotificationTests {
+
+        private final Long NOTIFICATION_ID = 100L;
+        private final String USER_EMAIL = "test@example.com";
+        private Notification dbNotification;
+
+        @BeforeEach
+        void setUp() {
+            // Setup a dummy notification that the database would return
+            dbNotification = Notification.builder()
+                    .id(NOTIFICATION_ID)
+                    .targetUrl("https://webhook.example.com")
+                    .status(NotificationStatus.PENDING)
+                    .build();
+        }
+
+        @Test
+        @DisplayName("Should throw exception when notification doesn't exist or doesn't belong to user")
+        void getNotification_WhenNotFoundOrAccessDenied_ThrowsException() {
+            // Arrange
+            when(notificationRepository.findByIdAndUser_Email(NOTIFICATION_ID, USER_EMAIL))
+                    .thenReturn(Optional.empty());
+
+            // Act & Assert
+            NotificationNotFoundException exception = assertThrows(NotificationNotFoundException.class, () ->
+                    notificationService.getNotification(NOTIFICATION_ID, USER_EMAIL)
+            );
+
+            assertTrue(exception.getMessage().contains(String.valueOf(NOTIFICATION_ID)));
+        }
+
+        @Test
+        @DisplayName("Should return mapped response when notification is found")
+        void getNotification_WhenFound_ReturnsResponse() {
+            // Arrange
+            when(notificationRepository.findByIdAndUser_Email(NOTIFICATION_ID, USER_EMAIL))
+                    .thenReturn(Optional.of(dbNotification));
+
+            // Act
+            NotificationResponse response = notificationService.getNotification(NOTIFICATION_ID, USER_EMAIL);
+
+            // Assert
+            assertNotNull(response);
+            assertEquals(NOTIFICATION_ID, response.id());
+            assertEquals("https://webhook.example.com", response.targetUrl());
+            assertEquals(NotificationStatus.PENDING, response.status());
         }
     }
 }
