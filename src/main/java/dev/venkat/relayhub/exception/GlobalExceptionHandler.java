@@ -7,6 +7,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.time.LocalDateTime;
 
@@ -115,5 +116,15 @@ public class GlobalExceptionHandler {
         );
 
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<Object> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
+        String errorMsg = String.format("Invalid value for parameter '%s'. Expected type: %s",
+                ex.getName(),
+                ex.getRequiredType() != null ? ex.getRequiredType().getSimpleName() : "Unknown");
+
+        // Returns a proper 400 Bad Request instead of a 500 server crash
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorMsg);
     }
 }
