@@ -3,9 +3,9 @@ spring:
     name: relayhub
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/relay_hub
-    username: postgres
-    password: postgres
+    url: jdbc:postgresql://localhost:5432/${POSTGRES_DB}
+    username: ${POSTGRES_USER}
+    password: ${POSTGRES_PASSWORD}
 
   jpa:
     hibernate:
@@ -21,7 +21,7 @@ spring:
     baseline-on-migrate: true
 
 jwt:
-  secret: 9e7c2f5d8a1b4e6f9c3d7a8b5e1f4c6d9a2b7e5c8f1d3a6b9e4f7c2d5a8b1e6
+  secret: ${JWT_SECRET}
   expiration: 3600000
 
 logging:
