@@ -23,6 +23,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
@@ -189,6 +190,125 @@ class NotificationRepositoryTest {
             // Final state check
             Notification finalState = notificationRepository.findById(id).orElseThrow();
             assertThat(finalState.getStatus()).isEqualTo(NotificationStatus.SUCCESS);
+        }
+    }
+
+    @Nested
+    @DisplayName("Method: findPendingNotifications (SKIP LOCKED & Filtering)")
+    class FindPendingNotificationsTests {
+
+        // Helper method to keep test data creation clean and avoid NOT NULL errors
+        private Notification createTestNotification(NotificationStatus status, LocalDateTime scheduled, LocalDateTime retry) {
+            Notification n = new Notification();
+            n.setTargetUrl("https://webhook.site");
+            n.setPayload("{}");
+            n.setUser(savedUser);
+            n.setStatus(status);
+            n.setScheduledTime(scheduled);
+            n.setNextRetryTime(retry);
+            return notificationRepository.save(n);
+        }
+
+        @Test
+        @DisplayName("Should strictly follow Status and Timestamp rules")
+        void findPendingNotifications_FiltersByStatusAndTime() {
+            LocalDateTime past = LocalDateTime.now().minusMinutes(10);
+            LocalDateTime future = LocalDateTime.now().plusMinutes(10);
+
+            // 1. PENDING & Past Scheduled -> SHOULD BE FETCHED
+            Notification validPending = createTestNotification(NotificationStatus.PENDING, past, null);
+
+            // 2. PENDING & Future Scheduled -> SKIP
+            createTestNotification(NotificationStatus.PENDING, future, null);
+
+            // 3. RETRYING & Past Retry Time -> SHOULD BE FETCHED
+            Notification validRetrying = createTestNotification(NotificationStatus.RETRYING, past, past);
+
+            // 4. RETRYING & Future Retry Time -> SKIP
+            createTestNotification(NotificationStatus.RETRYING, past, future);
+
+            // 5. SUCCESS & Past Scheduled -> SKIP (Wrong Status)
+            createTestNotification(NotificationStatus.SUCCESS, past, null);
+
+            List<Notification> pending = notificationRepository.findPendingNotifications();
+
+            // Assert exactly 2 notifications were fetched, and they are the correct ones
+            assertThat(pending).hasSize(2);
+            assertThat(pending).extracting(Notification::getId)
+                    .containsExactlyInAnyOrder(validPending.getId(), validRetrying.getId());
+        }
+
+        @Test
+        @DisplayName("ORDER BY and LIMIT: Should fetch oldest 10 records first")
+        void findPendingNotifications_RespectsLimitAndOrder() throws InterruptedException {
+            // Insert 15 valid notifications
+            LocalDateTime past = LocalDateTime.now().minusHours(1);
+            for (int i = 0; i < 15; i++) {
+                createTestNotification(NotificationStatus.PENDING, past, null);
+                Thread.sleep(10); // Ensure slight difference in created_at timestamp
+            }
+
+            List<Notification> batch = notificationRepository.findPendingNotifications();
+
+            assertThat(batch).hasSize(10); // Proves LIMIT 10 works
+        }
+
+        @Test
+        @DisplayName("SKIP LOCKED: Thread B ignores locked rows and fetches the remainder")
+        @Transactional(propagation = Propagation.NOT_SUPPORTED)
+        void findPendingNotifications_SkipLocked_WorksUnderConcurrency() {
+            // Setup: Insert exactly 15 valid pending notifications
+            LocalDateTime past = LocalDateTime.now().minusHours(1);
+            for (int i = 0; i < 15; i++) {
+                createTestNotification(NotificationStatus.PENDING, past, null);
+            }
+
+            CountDownLatch threadA_HasLockedBatch = new CountDownLatch(1);
+
+            // We use an array to store Thread B's result outside the lambda
+            final int[] threadBFetchedCount = {0};
+
+            // THREAD A: The First Worker
+            CompletableFuture<Void> threadA = CompletableFuture.runAsync(() -> {
+                transactionTemplate.execute(status -> {
+                    // Grabs and locks the first 10
+                    List<Notification> batchA = notificationRepository.findPendingNotifications();
+                    assertThat(batchA).hasSize(10);
+
+                    // Tell Thread B to attack
+                    threadA_HasLockedBatch.countDown();
+
+                    try {
+                        Thread.sleep(1000); // Hold the locks open
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    }
+                    return null;
+                });
+            });
+
+            // THREAD B: The Second Worker
+            CompletableFuture<Void> threadB = CompletableFuture.runAsync(() -> {
+                try {
+                    // Wait for Thread A to secure its locks
+                    threadA_HasLockedBatch.await();
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+
+                transactionTemplate.execute(status -> {
+                    // THIS IS THE MAGIC: It skips the 10 locked by A, and grabs the remaining 5
+                    List<Notification> batchB = notificationRepository.findPendingNotifications();
+                    threadBFetchedCount[0] = batchB.size();
+                    return null;
+                });
+            });
+
+            // Wait for both to finish
+            CompletableFuture.allOf(threadA, threadB).join();
+
+            // The Ultimate Assertion
+            assertThat(threadBFetchedCount[0]).isEqualTo(5);
         }
     }
 }
