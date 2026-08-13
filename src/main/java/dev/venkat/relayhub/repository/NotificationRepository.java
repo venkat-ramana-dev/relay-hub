@@ -23,13 +23,9 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
         FROM notifications
         WHERE
         (
-            status = 'PENDING'
-            OR status = 'RETRYING'
-        )
-        AND
-        (
-            scheduled_time <= NOW()
-            OR next_retry_time <= NOW()
+            (status = 'PENDING' AND scheduled_time <= NOW())
+            OR
+            (status = 'RETRYING' AND next_retry_time <= NOW())
         )
         ORDER BY created_at
         LIMIT 10
