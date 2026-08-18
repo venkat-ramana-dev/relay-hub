@@ -1,0 +1,114 @@
+RelayHub — k6 Notification Read/Write Mix Performance Test
+
+Test: Read vs Write Mix
+Workload: 80% POST /api/notifications, 20% GET /api/notifications/{id}
+Purpose: Measure throughput and latency under mixed database read/write load.
+
+Configuration:
+- 30s -> 5 VUs
+- 1m -> 15 VUs
+- 1m -> 15 VUs sustained
+- 30s -> 0 VUs
+- Maximum VUs: 15
+- HTTP timeout: 5s
+- Failure threshold: http_req_failed < 1%
+
+RUN 1
+-----
+Checks: 11,372
+Succeeded: 99.57% (11,324)
+Failed: 0.42% (48)
+
+POST:
+- Success: 9,085
+- Failed: 47
+- Success rate: ~99.48%
+
+GET:
+- Success: 2,239
+- Failed: 1
+- Success rate: ~99.96%
+
+HTTP:
+- Average: 176.79 ms
+- Minimum: 511 µs
+- Median: 24.10 ms
+- Maximum: 57.24 s
+- p90: 46.98 ms
+- p95: 54.51 ms
+- Expected-response average: 45.23 ms
+- Expected-response median: 24.05 ms
+- Expected-response p90: 46.61 ms
+- Expected-response p95: 53.65 ms
+- Failure rate: 0.42% (48/11,372)
+- Throughput: 62.02 requests/s
+- Total requests: 11,372
+
+Execution:
+- Average iteration: 220.64 ms
+- Median: 30.40 ms
+- Maximum: 1m0s
+- p90: 54.23 ms
+- p95: 64.11 ms
+- Iterations: 9,132
+- Iteration throughput: 49.80/s
+- VUs: 1-15
+- vus_max: 15
+
+Network:
+- Received: 6.8 MB (37 kB/s)
+- Sent: 5.3 MB (29 kB/s)
+
+RUN 2
+-----
+Checks: 13,321
+Succeeded: 99.60% (13,269)
+Failed: 0.39% (52)
+
+POST:
+- Success: 10,614
+- Failed: 52
+- Success rate: ~99.51%
+
+GET:
+- GET status check passed; no failed GET count was shown.
+
+HTTP:
+- Average: 150.43 ms
+- Minimum: 2.6 ms
+- Median: 20.53 ms
+- Maximum: 56.86 s
+- p90: 41.72 ms
+- p95: 49.08 ms
+- Expected-response average: 27.74 ms
+- Expected-response median: 20.49 ms
+- Expected-response p90: 41.22 ms
+- Expected-response p95: 48.17 ms
+- Failure rate: 0.39% (52/13,321)
+- Throughput: 72.82 requests/s
+- Total requests: 13,321
+
+Execution:
+- Average iteration: 188.30 ms
+- Median: 25.35 ms
+- Maximum: 56.86 s
+- p90: 48.19 ms
+- p95: 57.56 ms
+- Iterations: 10,666
+- Iteration throughput: 58.31/s
+- VUs: 1-15
+- vus_max: 15
+
+Network:
+- Received: 7.9 MB (43 kB/s)
+- Sent: 6.2 MB (34 kB/s)
+
+COMPARISON / TAKEAWAY
+---------------------
+- Both runs passed the configured http_req_failed < 1% threshold.
+- Run 2 had higher aggregate throughput: 72.82 req/s vs 62.02 req/s.
+- Run 2 had lower median and p95 HTTP latency: 20.53 ms / 49.08 ms vs 24.10 ms / 54.51 ms.
+- Average latency is much higher than median/p95 because a small number of requests had very long delays.
+- Maximum latency values are outliers, not representative normal latency.
+- These are local-machine benchmark results, not a claim of production capacity.
+- No p99 was collected in the default k6 summary.

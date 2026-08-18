@@ -1,0 +1,124 @@
+RelayHub — Performance Test 1: Notification Ingestion Load Test
+
+Endpoint:
+POST /api/notifications
+
+Authentication:
+JWT
+
+Idempotency:
+Unique Idempotency-Key per request
+
+Database:
+PostgreSQL 17
+
+Worker:
+Disabled / poll interval = 9999999
+
+Execution:
+k6 local execution
+
+Machine:
+Intel Core i5-1135G7
+12 GB RAM
+
+Environment:
+Windows
+Spring Boot running locally
+PostgreSQL running in Docker
+
+Timeout:
+5 seconds
+
+
+TEST RESULTS
+============
+
+Test 1 — 10 VUs
+----------------
+VUs: 10
+Duration: 4m
+
+Requests: 13,169
+Throughput: 54.74 RPS
+
+P50: 33.71 ms
+P90: 53.21 ms
+P95: 61.95 ms
+
+Error rate: 0.35%
+Failed requests: 47
+
+Max latency: 30.08 s
+
+
+Test 2 — 20 VUs
+----------------
+VUs: 20
+Duration: 4m
+
+Requests: 10,979
+Throughput: 45.42 RPS
+
+P50: 40.99 ms
+P90: 64.79 ms
+P95: 77.80 ms
+
+Error rate: 0.61%
+Failed requests: 67
+
+Max latency: 55.7 s
+
+
+Test 3 — 30 VUs
+----------------
+VUs: 30
+Duration: 4m30s
+
+Requests: 14,092
+Throughput: 52.06 RPS
+
+P50: 29.24 ms
+P90: 56.28 ms
+P95: 67.93 ms
+
+Error rate: 0.93%
+Failed requests: 132
+
+Max latency: 57.43 s
+
+
+SUMMARY
+=======
+
+| VUs | Requests | RPS   | P50      | P95      | Error % |
+|-----|----------|-------|----------|----------|---------|
+| 10  | 13,169   | 54.74 | 33.71 ms | 61.95 ms | 0.35%   |
+| 20  | 10,979   | 45.42 | 40.99 ms | 77.80 ms | 0.61%   |
+| 30  | 14,092   | 52.06 | 29.24 ms | 67.93 ms | 0.93%   |
+
+
+OBSERVATIONS
+============
+
+• Throughput remained approximately 45–55 RPS as concurrency increased
+  from 10 to 30 VUs.
+
+• P95 latency remained below approximately 80 ms for the normal request
+  population.
+
+• Error rate increased with concurrency:
+  0.35% → 0.61% → 0.93%.
+
+• Local machine CPU initially became heavily utilized during load
+  generation, while memory remained relatively high.
+
+• Some requests experienced very high latency/timeouts, significantly
+  increasing average latency.
+
+• These results represent a local development-machine benchmark and
+  should not be interpreted as the absolute capacity of RelayHub.
+
+• Further investigation is required to identify whether the limiting
+  resource is the application, database, JVM, connection pool, Docker,
+  or local machine.
