@@ -1,0 +1,76 @@
+Relay Hub — DB / Index Benchmark
+
+Purpose
+-------
+Benchmark the actual NotificationWorker dequeue query with and without the
+indexes defined for the notification queue.
+
+Dataset
+-------
+Approximately 1,000,000 rows were present in the notifications table.
+
+The benchmark query
+-------------------
+EXPLAIN (ANALYZE, BUFFERS)
+SELECT *
+FROM notifications
+WHERE
+(
+    (status = 'PENDING' AND scheduled_time <= NOW())
+    OR
+    (status = 'RETRYING' AND next_retry_time <= NOW())
+)
+ORDER BY created_at
+LIMIT 100
+FOR UPDATE SKIP LOCKED;
+
+Indexes tested
+--------------
+CREATE INDEX idx_notifications_queue
+ON notifications(status, scheduled_time);
+
+CREATE INDEX idx_notifications_retry
+ON notifications(status, next_retry_time);
+
+Result: WITHOUT indexes
+-----------------------
+Execution Time: 260.284 ms
+
+- PostgreSQL performed a sequential scan on notifications.
+- Approximately 1,000,000 rows were scanned.
+- 10,000 rows matched the worker condition.
+- 990,000 rows were removed by the filter.
+- Matching rows were sorted by created_at before LIMIT 100.
+
+Result: WITH indexes
+--------------------
+Execution Time: 36.366 ms
+
+- PostgreSQL used both notification indexes through a BitmapOr.
+- The indexed status conditions were used to identify candidate rows.
+- PostgreSQL then performed a Bitmap Heap Scan, applied the time conditions,
+  sorted by created_at, and applied FOR UPDATE SKIP LOCKED and LIMIT 100.
+
+Benchmark comparison
+--------------------
+Without indexes: 260.284 ms
+With indexes:       36.366 ms
+
+Approximate improvement:
+7.15x faster
+
+Conclusion
+----------
+The indexes significantly improve the actual NotificationWorker dequeue query.
+Without indexes PostgreSQL falls back to a sequential scan across the large
+notifications table. With the indexes PostgreSQL can narrow the candidate rows
+before applying the remaining conditions.
+
+This benchmark uses the actual worker dequeue query, including the PENDING and
+RETRYING conditions, ordering, batching, and row locking behavior.
+
+Notes
+-----
+- No application configuration was changed for this benchmark.
+- The existing index definitions remain unchanged.
+- This was performed as a database/index performance benchmark.
