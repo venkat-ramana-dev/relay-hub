@@ -1,0 +1,95 @@
+Relay Hub — Retry / Failure Testing
+
+Test Area
+Retry/Failure behavior of the NotificationWorker delivery finalization flow using WireMock as the downstream notification endpoint.
+
+Purpose
+Validate:
+- 4xx failures are moved directly to DEAD.
+- 5xx failures are retried and eventually moved to DEAD after reaching the configured maximum retry count.
+- A flaky downstream service can fail temporarily and then recover, causing the notification to transition from RETRYING to SUCCESS.
+- Notification state and notification history are updated consistently.
+
+Test Setup
+- Notifications tested per scenario: 100
+- Downstream mock server: WireMock
+- Worker testing configuration: batch size 100, polling interval 1 second.
+- Retry/backoff timing was reduced for testing so the retry workflow could be observed quickly.
+
+Test 1 — 4xx → DEAD
+
+Setup:
+- Inserted 100 notifications.
+- Configured WireMock to return a 4xx response.
+
+Expected:
+- 4xx is treated as non-retryable.
+- Notifications transition directly to DEAD.
+
+Result:
+- Successful.
+- All 100 notifications reached DEAD.
+- DEAD count was verified in the database.
+
+Test 2 — 5xx → RETRYING → DEAD
+
+Setup:
+- Inserted 100 notifications.
+- Configured WireMock to return a 5xx response.
+- Allowed processing until the configured maximum retry count was reached.
+
+Expected:
+- 5xx is retryable.
+- Notifications transition through RETRYING.
+- Retry count increases on each retry.
+- After the maximum retry count is reached, notifications transition to DEAD.
+
+Result:
+- Successful.
+- Notifications reached DEAD.
+- Retry count was verified as 3.
+- Database state was verified.
+
+Test 3 — Flaky Downstream → RETRYING → SUCCESS
+
+WireMock scenario:
+- Attempt 1: HTTP 503 → Attempt 2
+- Attempt 2: HTTP 503 → Attempt 3
+- Attempt 3: HTTP 200 → successful delivery
+
+Expected:
+- First failure → RETRYING.
+- Second failure → RETRYING.
+- Third attempt succeeds → SUCCESS.
+- Retry count remains 2 because two retries were required.
+
+Result:
+- Successful.
+- Notification transitioned from RETRYING to SUCCESS after the second retry.
+- Retry count in the notifications table was verified as 2.
+- Notification history was verified and showed the corresponding transitions.
+- Final notification state was SUCCESS.
+
+Overall Result
+
+All three scenarios passed:
+
+1. 4xx failure → DEAD
+2. Repeated 5xx failure → RETRYING → DEAD after max retries
+3. Temporary 5xx failures → RETRYING → SUCCESS after recovery
+
+The tests validate delivery state transitions as well as persistence of retry and history information.
+
+Application behavior validated:
+- Successful delivery → SUCCESS
+- 4xx response → DEAD
+- Max retries reached → DEAD
+- Other failures → RETRYING
+
+The retry path increments retry_count, records the failure reason, calculates next retry time using exponential backoff, and records the status transition in notification history.
+
+Testing classification
+
+These were integration/E2E-style workflow tests using the real Relay Hub application, database, NotificationWorker, and WireMock downstream service. They were not unit tests of the private methods in isolation.
+
+The flaky test is especially valuable because it validates the complete failure → retry → recovery path and confirms that both the notification record and notification history reflect the final outcome.
