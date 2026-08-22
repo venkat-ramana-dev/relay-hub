@@ -1,0 +1,89 @@
+Relay Hub — Notification Worker Performance Test
+
+Test: Seed and drain 10,000 PENDING notifications
+Date: 2026-08-22
+
+Purpose
+-------
+Benchmark the NotificationWorker by seeding 10,000 notifications and allowing the worker
+to process them successfully.
+
+Test Setup
+----------
+Seed script:
+    performance/seed-10k.js
+
+k6 configuration:
+    Executor: constant-arrival-rate
+    Rate: 20 requests/second
+    Duration: 500 seconds
+    Target URL: http://localhost:8089/webhook
+    Expected API response: HTTP 201
+
+Worker configuration during this test:
+    Batch size: 100
+    Polling interval: 1 second
+
+These values were used for this performance test. The application's normal worker
+configuration was not changed as part of this test.
+
+Seeding Results
+---------------
+k6 successfully created 10,001 notifications.
+
+    Checks total:            10,001
+    Checks succeeded:        10,001 (100%)
+    Checks failed:           0
+    HTTP requests:           10,001
+    HTTP request rate:       20.0017 requests/sec
+    Average HTTP duration:   10.71 ms
+    p95 HTTP duration:       15.4 ms
+    Maximum HTTP duration:   62.13 ms
+
+Database Verification
+---------------------
+Total notification rows observed in pgAdmin before the worker test:
+    10,020
+
+After the worker completed:
+    PENDING notifications: 0
+
+Worker Processing Results
+-------------------------
+SQL query used:
+
+SELECT
+    MIN(updated_at) AS worker_started,
+    MAX(updated_at) AS worker_finished,
+    EXTRACT(EPOCH FROM (MAX(updated_at) - MIN(updated_at))) AS total_seconds,
+    ROUND(COUNT(*) / EXTRACT(EPOCH FROM (MAX(updated_at) - MIN(updated_at)))) AS processed_per_second
+FROM notifications
+WHERE status = 'SUCCESS';
+
+Observed result:
+
+    Worker started:        2026-08-22 04:22:41.332337
+    Worker finished:       2026-08-22 04:25:39.184019
+    Total processing time: 177.851682 seconds
+    Throughput:            56 notifications/second
+    Remaining PENDING:     0
+
+Conclusion
+----------
+The NotificationWorker successfully drained the pending notification queue.
+
+For the test configuration:
+    10,000 seeded notifications
+    Batch size = 100
+    Polling interval = 1 second
+
+The observed processing throughput was approximately 56 notifications/second, with
+zero PENDING notifications remaining after processing.
+
+Notes
+-----
+- The performance-test configuration was not committed as an application configuration change.
+- Only the k6 seed script was added for this test.
+- Final configuration tuning and configurable worker settings will be handled separately
+  during the final review on a separate branch.
+- The measured throughput is specific to this test environment and configuration.
