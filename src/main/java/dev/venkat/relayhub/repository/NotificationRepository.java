@@ -5,6 +5,7 @@ import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
@@ -16,7 +17,8 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
 
     @Transactional
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    Optional<Notification> findById(Long id);
+    @Query("SELECT n FROM Notification n WHERE n.id = :id")
+    Optional<Notification> findByIdForUpdate(@Param("id") Long id);
 
     @Query(value = """
         SELECT *
@@ -28,9 +30,9 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
             (status = 'RETRYING' AND next_retry_time <= NOW())
         )
         ORDER BY created_at
-        LIMIT 10
+        LIMIT :batchSize
         FOR UPDATE SKIP LOCKED
         """, nativeQuery = true)
-    List<Notification> findPendingNotifications();
+    List<Notification> findPendingNotifications(@Param("batchSize") int batchSize);
 
 }

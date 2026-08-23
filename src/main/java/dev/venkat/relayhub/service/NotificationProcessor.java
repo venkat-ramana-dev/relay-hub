@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -25,52 +26,51 @@ public class NotificationProcessor {
     @Value("${relayhub.notification.max-retries:5}")
     private int maxRetries;
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public boolean markProcessing(Notification notification) {
+    @Transactional
+    public List<Notification> fetchAndClaimBatch(int batchSize) {
 
-        Notification n = notificationRepository.findById(notification.getId()).orElse(null);
-        if (n == null) {
-            return false;
+        List<Notification> batch = notificationRepository.findPendingNotifications(batchSize);
+
+        if (batch.isEmpty()) {
+            return batch;
         }
 
-        if (n.getStatus() != NotificationStatus.PENDING && n.getStatus() != NotificationStatus.RETRYING) {
-            return false;
+        for (Notification n : batch) {
+            NotificationStatus oldStatus = n.getStatus();
+            n.setStatus(NotificationStatus.PROCESSING);
+
+            historyService.logHistory(
+                    n, oldStatus, NotificationStatus.PROCESSING, "Worker claimed batch", null
+            );
         }
 
-        NotificationStatus oldStatus = n.getStatus();
-        n.setStatus(NotificationStatus.PROCESSING);
-        notificationRepository.save(n);
+        notificationRepository.saveAll(batch);
 
-        historyService.logHistory(
-                n, oldStatus, NotificationStatus.PROCESSING, "Worker claimed notification", null
-        );
-        log.info("Notification {} moved to PROCESSING", n.getId());
-
-        return true;
+        return batch;
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void finalizeDelivery(Notification notification, DeliveryResult result) {
+    public void finalizeDelivery(Long notificationId, DeliveryResult result) {
 
-        Notification n = notificationRepository.findById(notification.getId())
+        Notification notification = notificationRepository.findByIdForUpdate(notificationId)
                 .orElseThrow(() -> new IllegalStateException("Notification missing during finalize"));
 
         if (result.success()) {
-            handleSuccess(n, result);
+            handleSuccess(notification, result);
             return;
         }
 
         if (result.statusCode() != null && result.statusCode() >= 400 && result.statusCode() < 500) {
-            markDead(n, result);
+            markDead(notification, result);
             return;
         }
 
-        if (n.getRetryCount() >= maxRetries) {
-            markDead(n, result);
+        if (notification.getRetryCount() >= maxRetries) {
+            markDead(notification, result);
             return;
         }
 
-        handleRetry(n, result);
+        handleRetry(notification, result);
     }
 
     private void handleSuccess(Notification notification, DeliveryResult result) {
