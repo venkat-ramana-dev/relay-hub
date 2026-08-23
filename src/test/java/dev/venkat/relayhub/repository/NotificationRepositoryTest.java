@@ -58,6 +58,8 @@ class NotificationRepositoryTest {
 
     private User savedUser;
 
+    private static final int BATCH_SIZE = 10;
+
     @BeforeEach
     void setUp() {
         savedUser = transactionTemplate.execute(status -> {
@@ -141,7 +143,7 @@ class NotificationRepositoryTest {
             // Execute Thread A
             CompletableFuture<Void> threadA = CompletableFuture.runAsync(() -> {
                 transactionTemplate.execute(status -> {
-                    Notification n = notificationRepository.findById(id).orElseThrow();
+                    Notification n = notificationRepository.findByIdForUpdate(id).orElseThrow();
 
                     // Signal to Thread B that the lock is successfully held
                     threadA_HasAcquiredLock.countDown();
@@ -162,14 +164,17 @@ class NotificationRepositoryTest {
             CompletableFuture<Void> threadB = CompletableFuture.runAsync(() -> {
                 try {
                     // Wait securely until Thread A explicitly says it has the lock
-                    threadA_HasAcquiredLock.await();
+                    boolean acquired = threadA_HasAcquiredLock.await(5, java.util.concurrent.TimeUnit.SECONDS);
+                    if (!acquired) {
+                        throw new IllegalStateException("Test timed out waiting for Thread A");
+                    }
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 }
 
                 transactionTemplate.execute(status -> {
                     // THIS LINE HANGS UNTIL THREAD A FINISHES
-                    Notification n = notificationRepository.findById(id).orElseThrow();
+                    Notification n = notificationRepository.findByIdForUpdate(id).orElseThrow();
 
                     // PROOF: It must see the state Thread A saved, not the original PENDING state
                     assertThat(n.getStatus()).isEqualTo(NotificationStatus.PROCESSING);
@@ -184,7 +189,7 @@ class NotificationRepositoryTest {
             CompletableFuture.allOf(threadA, threadB).join();
 
             // Final state check
-            Notification finalState = notificationRepository.findById(id).orElseThrow();
+            Notification finalState = notificationRepository.findByIdForUpdate(id).orElseThrow();
             assertThat(finalState.getStatus()).isEqualTo(NotificationStatus.SUCCESS);
         }
     }
@@ -226,7 +231,7 @@ class NotificationRepositoryTest {
             // 5. SUCCESS & Past Scheduled -> SKIP (Wrong Status)
             createTestNotification(NotificationStatus.SUCCESS, past, null);
 
-            List<Notification> pending = notificationRepository.findPendingNotifications();
+            List<Notification> pending = notificationRepository.findPendingNotifications(BATCH_SIZE);
 
             // Assert exactly 2 notifications were fetched, and they are the correct ones
             assertThat(pending).hasSize(2);
@@ -244,7 +249,7 @@ class NotificationRepositoryTest {
                 Thread.sleep(10); // Ensure slight difference in created_at timestamp
             }
 
-            List<Notification> batch = notificationRepository.findPendingNotifications();
+            List<Notification> batch = notificationRepository.findPendingNotifications(BATCH_SIZE);
 
             assertThat(batch).hasSize(10); // Proves LIMIT 10 works
         }
@@ -268,7 +273,7 @@ class NotificationRepositoryTest {
             CompletableFuture<Void> threadA = CompletableFuture.runAsync(() -> {
                 transactionTemplate.execute(status -> {
                     // Grabs and locks the first 10
-                    List<Notification> batchA = notificationRepository.findPendingNotifications();
+                    List<Notification> batchA = notificationRepository.findPendingNotifications(BATCH_SIZE);
                     assertThat(batchA).hasSize(10);
 
                     // Tell Thread B to attack
@@ -294,7 +299,7 @@ class NotificationRepositoryTest {
 
                 transactionTemplate.execute(status -> {
                     // THIS IS THE MAGIC: It skips the 10 locked by A, and grabs the remaining 5
-                    List<Notification> batchB = notificationRepository.findPendingNotifications();
+                    List<Notification> batchB = notificationRepository.findPendingNotifications(BATCH_SIZE);
                     threadBFetchedCount[0] = batchB.size();
                     return null;
                 });
