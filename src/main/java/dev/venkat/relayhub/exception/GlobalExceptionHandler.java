@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Slf4j
 @RestControllerAdvice
@@ -24,7 +24,7 @@ public class GlobalExceptionHandler {
                 HttpStatus.CONFLICT.value(),
                 HttpStatus.CONFLICT.getReasonPhrase(),
                 ex.getMessage(),
-                LocalDateTime.now()
+                Instant.now()
         );
 
         return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
@@ -39,7 +39,7 @@ public class GlobalExceptionHandler {
                 HttpStatus.NOT_FOUND.value(),
                 HttpStatus.NOT_FOUND.getReasonPhrase(),
                 ex.getMessage(),
-                LocalDateTime.now()
+                Instant.now()
         );
 
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
@@ -54,7 +54,7 @@ public class GlobalExceptionHandler {
                 HttpStatus.NOT_FOUND.value(),
                 HttpStatus.NOT_FOUND.getReasonPhrase(),
                 ex.getMessage(),
-                LocalDateTime.now()
+                Instant.now()
         );
 
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
@@ -69,7 +69,7 @@ public class GlobalExceptionHandler {
                 HttpStatus.UNAUTHORIZED.value(),
                 HttpStatus.UNAUTHORIZED.getReasonPhrase(),
                 "Invalid email or password", // Don't expose which one is wrong for security!
-                LocalDateTime.now()
+                Instant.now()
         );
 
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
@@ -91,7 +91,7 @@ public class GlobalExceptionHandler {
                 HttpStatus.BAD_REQUEST.value(),
                 HttpStatus.BAD_REQUEST.getReasonPhrase(),
                 message,
-                LocalDateTime.now()
+                Instant.now()
         );
 
         return ResponseEntity.badRequest().body(response);
@@ -112,7 +112,7 @@ public class GlobalExceptionHandler {
                 HttpStatus.INTERNAL_SERVER_ERROR.value(),
                 HttpStatus.INTERNAL_SERVER_ERROR.getReasonPhrase(),
                 "An unexpected internal server error occurred",
-                LocalDateTime.now()
+                Instant.now()
         );
 
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);

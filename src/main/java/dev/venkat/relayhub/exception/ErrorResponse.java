@@ -1,11 +1,11 @@
 package dev.venkat.relayhub.exception;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 public record ErrorResponse(
         int status,
         String error,
         String message,
-        LocalDateTime timestamp
+        Instant timestamp
 ) {
 }

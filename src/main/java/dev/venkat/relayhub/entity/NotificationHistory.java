@@ -5,7 +5,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Entity
 @Table(name = "notification_history")
@@ -39,5 +39,5 @@ public class NotificationHistory {
 
     @CreationTimestamp
     @Column(name = "changed_at", updatable = false)
-    private LocalDateTime changedAt;
+    private Instant changedAt;
 }

@@ -22,7 +22,8 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-import java.time.LocalDateTime;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -36,11 +37,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 @Testcontainers
 @DisplayName("Integration Tests: NotificationRepository")
 class NotificationRepositoryTest {
-
-    // Forces the Java JVM to use the modern timezone name so Postgres 17 accepts it
-    static {
-        java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone("Asia/Kolkata"));
-    }
 
     // 1. Spin up a fresh Postgres 17 container for this test class
     // 2. @ServiceConnection automatically injects the URL, username, and password into Spring
@@ -97,7 +93,7 @@ class NotificationRepositoryTest {
             notification.setPayload("{}");
             notification.setStatus(NotificationStatus.PENDING);
             notification.setUser(savedUser);
-            notification.setScheduledTime(LocalDateTime.now());
+            notification.setScheduledTime(Instant.now());
             Notification saved = notificationRepository.save(notification);
 
             Optional<Notification> result = notificationRepository.findByIdAndUser_Email(saved.getId(), "test@example.com");
@@ -113,7 +109,7 @@ class NotificationRepositoryTest {
             notification.setPayload("{}");
             notification.setStatus(NotificationStatus.PENDING);
             notification.setUser(savedUser);
-            notification.setScheduledTime(LocalDateTime.now());
+            notification.setScheduledTime(Instant.now());
             Notification saved = notificationRepository.save(notification);
 
             Optional<Notification> result = notificationRepository.findByIdAndUser_Email(saved.getId(), "hacker@example.com");
@@ -136,7 +132,7 @@ class NotificationRepositoryTest {
             notification.setPayload("{}");
             notification.setStatus(NotificationStatus.PENDING);
             notification.setUser(savedUser);
-            notification.setScheduledTime(LocalDateTime.now());
+            notification.setScheduledTime(Instant.now());
             Notification saved = notificationRepository.save(notification);
             Long id = saved.getId();
 
@@ -198,7 +194,7 @@ class NotificationRepositoryTest {
     class FindPendingNotificationsTests {
 
         // Helper method to keep test data creation clean and avoid NOT NULL errors
-        private Notification createTestNotification(NotificationStatus status, LocalDateTime scheduled, LocalDateTime retry) {
+        private Notification createTestNotification(NotificationStatus status, Instant scheduled, Instant retry) {
             Notification n = new Notification();
             n.setTargetUrl("https://webhook.site");
             n.setPayload("{}");
@@ -212,8 +208,8 @@ class NotificationRepositoryTest {
         @Test
         @DisplayName("Should strictly follow Status and Timestamp rules")
         void findPendingNotifications_FiltersByStatusAndTime() {
-            LocalDateTime past = LocalDateTime.now().minusMinutes(10);
-            LocalDateTime future = LocalDateTime.now().plusMinutes(10);
+            Instant past = Instant.now().minus(Duration.ofMinutes(10));
+            Instant future = Instant.now().plus(Duration.ofMinutes(10));
 
             // 1. PENDING & Past Scheduled -> SHOULD BE FETCHED
             Notification validPending = createTestNotification(NotificationStatus.PENDING, past, null);
@@ -242,7 +238,7 @@ class NotificationRepositoryTest {
         @DisplayName("ORDER BY and LIMIT: Should fetch oldest 10 records first")
         void findPendingNotifications_RespectsLimitAndOrder() throws InterruptedException {
             // Insert 15 valid notifications
-            LocalDateTime past = LocalDateTime.now().minusHours(1);
+            Instant past = Instant.now().minus(Duration.ofHours(1));
             for (int i = 0; i < 15; i++) {
                 createTestNotification(NotificationStatus.PENDING, past, null);
                 Thread.sleep(10); // Ensure slight difference in created_at timestamp
@@ -258,7 +254,7 @@ class NotificationRepositoryTest {
         @Transactional(propagation = Propagation.NOT_SUPPORTED)
         void findPendingNotifications_SkipLocked_WorksUnderConcurrency() {
             // Setup: Insert exactly 15 valid pending notifications
-            LocalDateTime past = LocalDateTime.now().minusHours(1);
+            Instant past = Instant.now().minus(Duration.ofHours(1));
             for (int i = 0; i < 15; i++) {
                 createTestNotification(NotificationStatus.PENDING, past, null);
             }

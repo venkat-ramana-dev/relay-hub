@@ -3,7 +3,7 @@ package dev.venkat.relayhub.dto.response;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import dev.venkat.relayhub.enums.NotificationStatus;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record NotificationResponse(
@@ -12,9 +12,9 @@ public record NotificationResponse(
         String payload,
         NotificationStatus status,
         Integer retryCount,
-        LocalDateTime scheduledTime,
-        LocalDateTime nextRetryTime,
+        Instant scheduledTime,
+        Instant nextRetryTime,
         String lastFailureReason,
-        LocalDateTime createdAt,
-        LocalDateTime updatedAt
+        Instant createdAt,
+        Instant updatedAt
 ) {}

@@ -11,7 +11,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
+import java.time.Duration;
+import java.time.Instant;
 
 @Service
 @RequiredArgsConstructor
@@ -106,7 +107,7 @@ public class NotificationProcessor {
         notification.setRetryCount(currentRetryCount + 1);
         notification.setLastFailureReason(result.errorMessage());
 
-        notification.setNextRetryTime(LocalDateTime.now().plusMinutes(backoffMinutes));
+        notification.setNextRetryTime(Instant.now().plus(Duration.ofMinutes(backoffMinutes)));
 
         notificationRepository.save(notification);
 

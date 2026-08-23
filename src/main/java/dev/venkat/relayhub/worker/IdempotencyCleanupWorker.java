@@ -6,7 +6,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-import java.time.LocalDateTime;
+import java.time.Duration;
+import java.time.Instant;
 
 @Slf4j
 @Component
@@ -15,13 +16,14 @@ public class IdempotencyCleanupWorker {
 
     private final IdempotencyRecordRepository idempotencyRepository;
 
+
     // Runs at the top of every hour
     @Scheduled(cron = "0 0 * * * *")
     public void cleanupOldIdempotencyKeys() {
 
         log.info("Starting scheduled cleanup of expired idempotency keys...");
 
-        LocalDateTime cutoffTime = LocalDateTime.now().minusHours(24);
+        Instant cutoffTime = Instant.now().minus(Duration.ofHours(24));
 
         try {
             idempotencyRepository.deleteByCreatedAtBefore(cutoffTime);
