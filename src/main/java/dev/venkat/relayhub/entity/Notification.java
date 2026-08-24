@@ -45,6 +45,9 @@ public class Notification {
     @Column(name = "scheduled_time", nullable = false)
     private Instant scheduledTime;
 
+    @Column(name = "processing_started_at")
+    private Instant processingStartedAt;
+
     @Column(name = "next_retry_time")
     private Instant nextRetryTime;
 
