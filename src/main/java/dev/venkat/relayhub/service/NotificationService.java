@@ -8,6 +8,7 @@ import dev.venkat.relayhub.entity.User;
 import dev.venkat.relayhub.enums.NotificationStatus;
 import dev.venkat.relayhub.exception.NotificationNotFoundException;
 import dev.venkat.relayhub.exception.UserNotFoundException;
+import dev.venkat.relayhub.mapper.NotificationMapper;
 import dev.venkat.relayhub.repository.IdempotencyRecordRepository;
 import dev.venkat.relayhub.repository.NotificationRepository;
 import dev.venkat.relayhub.repository.UserRepository;
@@ -16,8 +17,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import tools.jackson.databind.JsonNode;
-import tools.jackson.databind.ObjectMapper;
 
 import java.time.Instant;
 import java.util.Optional;
@@ -31,7 +30,7 @@ public class NotificationService {
     private final UserRepository userRepository;
     private final NotificationHistoryService historyService;
     private final IdempotencyRecordRepository idempotencyRepository;
-    private final ObjectMapper objectMapper;
+    private final NotificationMapper notificationMapper;
 
     @Transactional
     public NotificationResponse schedule(ScheduleNotificationRequest request, String userEmail, String idempotencyKey) {
@@ -44,7 +43,7 @@ public class NotificationService {
         Optional<IdempotencyRecord> existingRecord = idempotencyRepository.findByKeyNameAndUser(idempotencyKey, user);
         if (existingRecord.isPresent()) {
             log.warn("Idempotency hit! Returning cached notification for key: {}", idempotencyKey);
-            return mapToResponse(existingRecord.get().getNotification());
+            return notificationMapper.mapToResponse(existingRecord.get().getNotification());
         }
 
         Notification notification = Notification.builder()
@@ -68,7 +67,7 @@ public class NotificationService {
 
             historyService.logHistory(saved, null, saved.getStatus(), "Notification scheduled by client", null);
 
-            return mapToResponse(saved);
+            return notificationMapper.mapToResponse(saved);
 
         } catch (DataIntegrityViolationException e) {
 
@@ -77,7 +76,7 @@ public class NotificationService {
             IdempotencyRecord raceRecord = idempotencyRepository.findByKeyNameAndUser(idempotencyKey, user)
                     .orElseThrow(() -> new RuntimeException("Critical failure recovering idempotency key"));
 
-            return mapToResponse(raceRecord.getNotification());
+            return notificationMapper.mapToResponse(raceRecord.getNotification());
         }
     }
 
@@ -89,29 +88,6 @@ public class NotificationService {
         Notification notification = notificationRepository.findByIdAndUser_Email(notificationId, userEmail)
                 .orElseThrow(() -> new NotificationNotFoundException("Notification not found or access denied. Notification Id: " + notificationId));
 
-        return mapToResponse(notification);
-    }
-
-    private NotificationResponse mapToResponse(Notification notification) {
-
-        JsonNode payloadNode = null;
-        try {
-            payloadNode = objectMapper.readTree(notification.getPayload());
-        } catch (Exception e) {
-            log.error("Failed to parse JSON payload for notification {}", notification.getId());
-        }
-
-        return new NotificationResponse(
-                notification.getId(),
-                notification.getTargetUrl(),
-                payloadNode,
-                notification.getStatus(),
-                notification.getRetryCount(),
-                notification.getScheduledTime(),
-                notification.getNextRetryTime(),
-                notification.getLastFailureReason(),
-                notification.getCreatedAt(),
-                notification.getUpdatedAt()
-        );
+        return notificationMapper.mapToResponse(notification);
     }
 }
