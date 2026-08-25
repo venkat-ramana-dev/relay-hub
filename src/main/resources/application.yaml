@@ -2,6 +2,9 @@ spring:
   application:
     name: relayhub
 
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:local}
+
   datasource:
     url: jdbc:postgresql://localhost:5434/${POSTGRES_DB}
     username: ${POSTGRES_USER}
@@ -35,6 +38,11 @@ relayhub:
     batch-size: 10
     processing-recovery-interval: 120000
     processing-timeout: 5m
+
+  bootstrap:
+    admin:
+      email: ${RELAYHUB_ADMIN_EMAIL:admin@relayhub.dev}
+      password: ${RELAYHUB_ADMIN_PASSWORD:admin123}
 
   notification:
     max-retries: 5

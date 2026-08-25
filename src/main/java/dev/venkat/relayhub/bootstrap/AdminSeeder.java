@@ -6,6 +6,7 @@ import dev.venkat.relayhub.repository.UserRepository;
 import dev.venkat.relayhub.util.SecurityUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -22,6 +23,12 @@ public class AdminSeeder implements CommandLineRunner {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
+    @Value("${relayhub.bootstrap.admin.email}")
+    private String adminEmail;
+
+    @Value("${relayhub.bootstrap.admin.password}")
+    private String adminPassword;
+
     @Override
     public void run(String... args) {
 
@@ -34,14 +41,16 @@ public class AdminSeeder implements CommandLineRunner {
 
             User rootAdmin = User.builder()
                     .name("System Admin")
-                    .email("admin@relayhub.dev")
-                    .password(passwordEncoder.encode("admin123"))
+                    .email(adminEmail)
+                    .password(passwordEncoder.encode(adminPassword))
                     .role(Role.ADMIN)
                     .apiKey(hashedApiKey)
                     .build();
 
             userRepository.save(rootAdmin);
-            log.info("Root Admin created successfully: admin@relayhub.dev. Api Key: {}", rawApiKey);
+
+            log.warn("Root Admin created successfully: {}", adminEmail);
+            log.warn("Generated admin API key (local/dev only): {}", rawApiKey);
         } else {
             log.info("Admin user already exists. Skipping bootstrap.");
         }
