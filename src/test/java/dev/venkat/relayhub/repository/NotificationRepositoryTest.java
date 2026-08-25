@@ -22,7 +22,8 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-import java.time.LocalDateTime;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -36,11 +37,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 @Testcontainers
 @DisplayName("Integration Tests: NotificationRepository")
 class NotificationRepositoryTest {
-
-    // Forces the Java JVM to use the modern timezone name so Postgres 17 accepts it
-    static {
-        java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone("Asia/Kolkata"));
-    }
 
     // 1. Spin up a fresh Postgres 17 container for this test class
     // 2. @ServiceConnection automatically injects the URL, username, and password into Spring
@@ -61,6 +57,8 @@ class NotificationRepositoryTest {
     private UserRepository userRepository;
 
     private User savedUser;
+
+    private static final int BATCH_SIZE = 10;
 
     @BeforeEach
     void setUp() {
@@ -97,7 +95,7 @@ class NotificationRepositoryTest {
             notification.setPayload("{}");
             notification.setStatus(NotificationStatus.PENDING);
             notification.setUser(savedUser);
-            notification.setScheduledTime(LocalDateTime.now());
+            notification.setScheduledTime(Instant.now());
             Notification saved = notificationRepository.save(notification);
 
             Optional<Notification> result = notificationRepository.findByIdAndUser_Email(saved.getId(), "test@example.com");
@@ -113,7 +111,7 @@ class NotificationRepositoryTest {
             notification.setPayload("{}");
             notification.setStatus(NotificationStatus.PENDING);
             notification.setUser(savedUser);
-            notification.setScheduledTime(LocalDateTime.now());
+            notification.setScheduledTime(Instant.now());
             Notification saved = notificationRepository.save(notification);
 
             Optional<Notification> result = notificationRepository.findByIdAndUser_Email(saved.getId(), "hacker@example.com");
@@ -136,7 +134,7 @@ class NotificationRepositoryTest {
             notification.setPayload("{}");
             notification.setStatus(NotificationStatus.PENDING);
             notification.setUser(savedUser);
-            notification.setScheduledTime(LocalDateTime.now());
+            notification.setScheduledTime(Instant.now());
             Notification saved = notificationRepository.save(notification);
             Long id = saved.getId();
 
@@ -145,7 +143,7 @@ class NotificationRepositoryTest {
             // Execute Thread A
             CompletableFuture<Void> threadA = CompletableFuture.runAsync(() -> {
                 transactionTemplate.execute(status -> {
-                    Notification n = notificationRepository.findById(id).orElseThrow();
+                    Notification n = notificationRepository.findByIdForUpdate(id).orElseThrow();
 
                     // Signal to Thread B that the lock is successfully held
                     threadA_HasAcquiredLock.countDown();
@@ -166,14 +164,17 @@ class NotificationRepositoryTest {
             CompletableFuture<Void> threadB = CompletableFuture.runAsync(() -> {
                 try {
                     // Wait securely until Thread A explicitly says it has the lock
-                    threadA_HasAcquiredLock.await();
+                    boolean acquired = threadA_HasAcquiredLock.await(5, java.util.concurrent.TimeUnit.SECONDS);
+                    if (!acquired) {
+                        throw new IllegalStateException("Test timed out waiting for Thread A");
+                    }
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 }
 
                 transactionTemplate.execute(status -> {
                     // THIS LINE HANGS UNTIL THREAD A FINISHES
-                    Notification n = notificationRepository.findById(id).orElseThrow();
+                    Notification n = notificationRepository.findByIdForUpdate(id).orElseThrow();
 
                     // PROOF: It must see the state Thread A saved, not the original PENDING state
                     assertThat(n.getStatus()).isEqualTo(NotificationStatus.PROCESSING);
@@ -188,7 +189,7 @@ class NotificationRepositoryTest {
             CompletableFuture.allOf(threadA, threadB).join();
 
             // Final state check
-            Notification finalState = notificationRepository.findById(id).orElseThrow();
+            Notification finalState = notificationRepository.findByIdForUpdate(id).orElseThrow();
             assertThat(finalState.getStatus()).isEqualTo(NotificationStatus.SUCCESS);
         }
     }
@@ -198,7 +199,7 @@ class NotificationRepositoryTest {
     class FindPendingNotificationsTests {
 
         // Helper method to keep test data creation clean and avoid NOT NULL errors
-        private Notification createTestNotification(NotificationStatus status, LocalDateTime scheduled, LocalDateTime retry) {
+        private Notification createTestNotification(NotificationStatus status, Instant scheduled, Instant retry) {
             Notification n = new Notification();
             n.setTargetUrl("https://webhook.site");
             n.setPayload("{}");
@@ -212,8 +213,8 @@ class NotificationRepositoryTest {
         @Test
         @DisplayName("Should strictly follow Status and Timestamp rules")
         void findPendingNotifications_FiltersByStatusAndTime() {
-            LocalDateTime past = LocalDateTime.now().minusMinutes(10);
-            LocalDateTime future = LocalDateTime.now().plusMinutes(10);
+            Instant past = Instant.now().minus(Duration.ofMinutes(10));
+            Instant future = Instant.now().plus(Duration.ofMinutes(10));
 
             // 1. PENDING & Past Scheduled -> SHOULD BE FETCHED
             Notification validPending = createTestNotification(NotificationStatus.PENDING, past, null);
@@ -230,7 +231,7 @@ class NotificationRepositoryTest {
             // 5. SUCCESS & Past Scheduled -> SKIP (Wrong Status)
             createTestNotification(NotificationStatus.SUCCESS, past, null);
 
-            List<Notification> pending = notificationRepository.findPendingNotifications();
+            List<Notification> pending = notificationRepository.findPendingNotifications(BATCH_SIZE);
 
             // Assert exactly 2 notifications were fetched, and they are the correct ones
             assertThat(pending).hasSize(2);
@@ -242,13 +243,13 @@ class NotificationRepositoryTest {
         @DisplayName("ORDER BY and LIMIT: Should fetch oldest 10 records first")
         void findPendingNotifications_RespectsLimitAndOrder() throws InterruptedException {
             // Insert 15 valid notifications
-            LocalDateTime past = LocalDateTime.now().minusHours(1);
+            Instant past = Instant.now().minus(Duration.ofHours(1));
             for (int i = 0; i < 15; i++) {
                 createTestNotification(NotificationStatus.PENDING, past, null);
                 Thread.sleep(10); // Ensure slight difference in created_at timestamp
             }
 
-            List<Notification> batch = notificationRepository.findPendingNotifications();
+            List<Notification> batch = notificationRepository.findPendingNotifications(BATCH_SIZE);
 
             assertThat(batch).hasSize(10); // Proves LIMIT 10 works
         }
@@ -258,7 +259,7 @@ class NotificationRepositoryTest {
         @Transactional(propagation = Propagation.NOT_SUPPORTED)
         void findPendingNotifications_SkipLocked_WorksUnderConcurrency() {
             // Setup: Insert exactly 15 valid pending notifications
-            LocalDateTime past = LocalDateTime.now().minusHours(1);
+            Instant past = Instant.now().minus(Duration.ofHours(1));
             for (int i = 0; i < 15; i++) {
                 createTestNotification(NotificationStatus.PENDING, past, null);
             }
@@ -272,7 +273,7 @@ class NotificationRepositoryTest {
             CompletableFuture<Void> threadA = CompletableFuture.runAsync(() -> {
                 transactionTemplate.execute(status -> {
                     // Grabs and locks the first 10
-                    List<Notification> batchA = notificationRepository.findPendingNotifications();
+                    List<Notification> batchA = notificationRepository.findPendingNotifications(BATCH_SIZE);
                     assertThat(batchA).hasSize(10);
 
                     // Tell Thread B to attack
@@ -298,7 +299,7 @@ class NotificationRepositoryTest {
 
                 transactionTemplate.execute(status -> {
                     // THIS IS THE MAGIC: It skips the 10 locked by A, and grabs the remaining 5
-                    List<Notification> batchB = notificationRepository.findPendingNotifications();
+                    List<Notification> batchB = notificationRepository.findPendingNotifications(BATCH_SIZE);
                     threadBFetchedCount[0] = batchB.size();
                     return null;
                 });

@@ -8,7 +8,7 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UpdateTimestamp;
 import org.hibernate.type.SqlTypes;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Entity
 @Table(name = "notifications")
@@ -43,19 +43,22 @@ public class Notification {
     private Integer retryCount = 0;
 
     @Column(name = "scheduled_time", nullable = false)
-    private LocalDateTime scheduledTime;
+    private Instant scheduledTime;
+
+    @Column(name = "processing_started_at")
+    private Instant processingStartedAt;
 
     @Column(name = "next_retry_time")
-    private LocalDateTime nextRetryTime;
+    private Instant nextRetryTime;
 
     @Column(name = "last_failure_reason")
     private String lastFailureReason;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     @UpdateTimestamp
     @Column(name = "updated_at")
-    private LocalDateTime updatedAt;
+    private Instant updatedAt;
 }

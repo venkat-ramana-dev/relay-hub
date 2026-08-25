@@ -32,5 +32,9 @@ logging:
 relayhub:
   worker:
     poll-interval: 5000
+    batch-size: 10
+    processing-recovery-interval: 120000
+    processing-timeout: 5m
+
   notification:
     max-retries: 5

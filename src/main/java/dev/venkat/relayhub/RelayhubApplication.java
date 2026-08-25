@@ -12,8 +12,6 @@ public class RelayhubApplication {
 
 	public static void main(String[] args) {
 
-        TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
-
         SpringApplication.run(RelayhubApplication.class, args);
 	}
 

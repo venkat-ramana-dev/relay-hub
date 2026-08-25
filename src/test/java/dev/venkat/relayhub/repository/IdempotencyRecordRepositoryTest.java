@@ -17,10 +17,12 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-import java.time.LocalDateTime;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.InstanceOfAssertFactories.DURATION;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
 @Testcontainers
@@ -36,9 +38,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 @DisplayName("Integration Tests: IdempotencyRecordRepository")
 class IdempotencyRecordRepositoryTest {
 
-    static {
-        java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone("Asia/Kolkata"));
-    }
 
     @Container
     @ServiceConnection
@@ -78,7 +77,7 @@ class IdempotencyRecordRepositoryTest {
         notification.setPayload("{}");
         notification.setStatus(NotificationStatus.PENDING);
         notification.setUser(savedUser);
-        notification.setScheduledTime(LocalDateTime.now());
+        notification.setScheduledTime(Instant.now());
         savedNotification = notificationRepository.save(notification);
     }
 
@@ -119,7 +118,7 @@ class IdempotencyRecordRepositoryTest {
         notification2.setPayload("{}");
         notification2.setStatus(NotificationStatus.PENDING);
         notification2.setUser(savedUser);
-        notification2.setScheduledTime(LocalDateTime.now());
+        notification2.setScheduledTime(Instant.now());
         Notification savedNotification2 = notificationRepository.save(notification2);
 
         // Create a NEW record
@@ -132,7 +131,7 @@ class IdempotencyRecordRepositoryTest {
         // We can't easily manipulate @CreationTimestamp fields before save without reflection.
         // Instead, let's just make sure the delete method executes without throwing an API usage error.
         // In a real environment, you'd test the exact timestamp logic using a dedicated test double or native update.
-        LocalDateTime cutoff = LocalDateTime.now().plusDays(1); // Future date to delete EVERYTHING
+        Instant cutoff = Instant.now().plus(Duration.ofDays(1)); // Future date to delete EVERYTHING
         idempotencyRecordRepository.deleteByCreatedAtBefore(cutoff);
 
         // Verify the @Modifying query successfully wiped the table

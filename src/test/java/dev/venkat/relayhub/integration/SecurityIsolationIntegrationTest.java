@@ -19,6 +19,9 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
+import java.time.Duration;
+import java.time.Instant;
+
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -35,10 +38,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.
 })
 @DisplayName("E2E-Style API Tests: Security & Data Isolation Flow")
 class SecurityIsolationIntegrationTest {
-
-    static {
-        java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone("Asia/Kolkata"));
-    }
 
     @Container
     @ServiceConnection
@@ -92,13 +91,17 @@ class SecurityIsolationIntegrationTest {
         // ==========================================
         // 3. USER A CREATES A NOTIFICATION
         // ==========================================
+        String scheduledTime = Instant.now()
+                .plus(Duration.ofMinutes(10))
+                .toString();
+
         String notificationPayload = """
                 {
                     "targetUrl": "https://webhook.site/alice-secret",
                     "payload": "{\\"secret\\": \\"data\\"}",
-                    "scheduledTime": "2026-08-15T10:00:00"
+                    "scheduledTime": "%s"
                 }
-                """;
+                """.formatted(scheduledTime);
 
         MvcResult createResult = mockMvc.perform(post("/api/notifications")
                         .header("Authorization", "Bearer " + jwtA)

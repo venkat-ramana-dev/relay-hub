@@ -6,7 +6,7 @@ import jakarta.validation.constraints.NotNull;
 import org.hibernate.validator.constraints.URL;
 import tools.jackson.databind.JsonNode;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 public record ScheduleNotificationRequest(
 
@@ -18,5 +18,5 @@ public record ScheduleNotificationRequest(
         JsonNode payload,
 
         @FutureOrPresent(message = "Scheduled time cannot be in the past")
-        LocalDateTime scheduledTime
+        Instant scheduledTime
 ) {}

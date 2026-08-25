@@ -22,7 +22,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 
 
 import java.security.Principal;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -102,7 +102,7 @@ class NotificationControllerTest {
                 "{\"msg\":\"hello\"}",
                 NotificationStatus.PENDING, // Ensuring status is PENDING as requested
                 0,
-                LocalDateTime.now(),
+                Instant.now(),
                 null,
                 null,
                 null,
@@ -144,7 +144,7 @@ class NotificationControllerTest {
                 "{\"msg\":\"hello\"}",
                 NotificationStatus.PENDING,
                 0,
-                LocalDateTime.now(),
+                Instant.now(),
                 null, null, null, null
         );
 

@@ -23,7 +23,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -71,7 +71,7 @@ class NotificationServiceTest {
             request = new ScheduleNotificationRequest(
                     "https://webhook.example.com",
                     dummyPayload,
-                    LocalDateTime.now()
+                    Instant.now()
             );
         }
 

@@ -18,7 +18,8 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-import java.time.LocalDateTime;
+import java.time.Duration;
+import java.time.Instant;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -34,10 +35,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 })
 @DisplayName("Integration Test: Notification Worker")
 class WorkerIntegrationTest {
-
-    static {
-        java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone("Asia/Kolkata"));
-    }
 
     @Container
     @ServiceConnection
@@ -138,7 +135,7 @@ class WorkerIntegrationTest {
                 """);
         notification.setStatus(NotificationStatus.PENDING);
         notification.setScheduledTime(
-                LocalDateTime.now().minusMinutes(5)
+                Instant.now().minus(Duration.ofMinutes(10))
         );
 
         notification = notificationRepository.save(notification);

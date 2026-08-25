@@ -17,6 +17,9 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
+import java.time.Duration;
+import java.time.Instant;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -32,10 +35,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 })
 @DisplayName("E2E-Style API Tests: Idempotency Flow")
 class IdempotencyIntegrationTest {
-
-    static {
-        java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone("Asia/Kolkata"));
-    }
 
     @Container
     @ServiceConnection
@@ -80,13 +79,18 @@ class IdempotencyIntegrationTest {
 
         // 2. Define the Notification Payload and Key
         String idempotencyKey = "req-uuid-9999-8888";
+
+        String scheduledTime = Instant.now()
+                .plus(Duration.ofMinutes(10))
+                .toString();
+
         String notificationPayload = """
-                {
-                    "targetUrl": "https://webhook.site/idempotent",
-                    "payload": "{\\"event\\": \\"payment_success\\"}",
-                    "scheduledTime": "2026-08-15T10:00:00"
-                }
-                """;
+        {
+            "targetUrl": "https://webhook.site/idempotent",
+            "payload": "{\\"event\\": \\"payment_success\\"}",
+            "scheduledTime": "%s"
+        }
+        """.formatted(scheduledTime);
 
         // 3. FIRST REQUEST: Should succeed and create the notification
         mockMvc.perform(post("/api/notifications")

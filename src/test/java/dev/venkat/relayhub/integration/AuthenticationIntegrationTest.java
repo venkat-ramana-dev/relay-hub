@@ -18,6 +18,9 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
+import java.time.Duration;
+import java.time.Instant;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -34,10 +37,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 })
 @DisplayName("E2E-Style API Tests: Authentication Flow")
 class AuthenticationIntegrationTest {
-
-    static {
-        java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone("Asia/Kolkata"));
-    }
 
     @Container
     @ServiceConnection
@@ -101,14 +100,18 @@ class AuthenticationIntegrationTest {
         String jwtToken = jsonNode.get("token").asText();
         assertThat(jwtToken).isNotBlank();
 
+        String scheduledTime = Instant.now()
+                .plus(Duration.ofMinutes(10))
+                .toString();
+
         // 5. Use the JWT to successfully create a notification
         String notificationPayload = """
                 {
                     "targetUrl": "https://webhook.site/test",
                     "payload": "{\\"test\\": \\"data\\"}",
-                    "scheduledTime": "2026-08-14T10:00:00"
+                     "scheduledTime": "%s"
                 }
-                """;
+                """.formatted(scheduledTime);
 
         mockMvc.perform(post("/api/notifications")
                         .header("Authorization", "Bearer " + jwtToken)

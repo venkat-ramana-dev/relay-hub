@@ -18,7 +18,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Optional;
 
 @Slf4j
@@ -51,7 +51,7 @@ public class NotificationService {
                 .payload(request.payload().toString())
                 .status(NotificationStatus.PENDING)
                 .retryCount(0)
-                .scheduledTime(request.scheduledTime() != null ? request.scheduledTime() : LocalDateTime.now())
+                .scheduledTime(request.scheduledTime() != null ? request.scheduledTime() : Instant.now())
                 .build();
 
         try {
