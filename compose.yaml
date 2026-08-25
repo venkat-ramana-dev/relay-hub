@@ -8,6 +8,12 @@ services:
     volumes:
       - relayhub_data:/var/lib/postgresql/data
 
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   relayhub_api:
     build: .
     ports:
@@ -19,7 +25,8 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       TZ: UTC
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
 
 volumes:
   relayhub_data:
