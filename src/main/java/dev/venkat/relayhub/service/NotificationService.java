@@ -1,6 +1,5 @@
 package dev.venkat.relayhub.service;
 
-
 import dev.venkat.relayhub.dto.request.ScheduleNotificationRequest;
 import dev.venkat.relayhub.dto.response.NotificationResponse;
 import dev.venkat.relayhub.entity.IdempotencyRecord;
@@ -17,6 +16,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 import java.time.Instant;
 import java.util.Optional;
@@ -30,6 +31,7 @@ public class NotificationService {
     private final UserRepository userRepository;
     private final NotificationHistoryService historyService;
     private final IdempotencyRecordRepository idempotencyRepository;
+    private final ObjectMapper objectMapper;
 
     @Transactional
     public NotificationResponse schedule(ScheduleNotificationRequest request, String userEmail, String idempotencyKey) {
@@ -91,10 +93,18 @@ public class NotificationService {
     }
 
     private NotificationResponse mapToResponse(Notification notification) {
+
+        JsonNode payloadNode = null;
+        try {
+            payloadNode = objectMapper.readTree(notification.getPayload());
+        } catch (Exception e) {
+            log.error("Failed to parse JSON payload for notification {}", notification.getId());
+        }
+
         return new NotificationResponse(
                 notification.getId(),
                 notification.getTargetUrl(),
-                notification.getPayload(),
+                payloadNode,
                 notification.getStatus(),
                 notification.getRetryCount(),
                 notification.getScheduledTime(),

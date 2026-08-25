@@ -1,7 +1,9 @@
 package dev.venkat.relayhub.dto.response;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+
 import dev.venkat.relayhub.enums.NotificationStatus;
+import tools.jackson.databind.JsonNode;
 
 import java.time.Instant;
 
@@ -9,7 +11,7 @@ import java.time.Instant;
 public record NotificationResponse(
         Long id,
         String targetUrl,
-        String payload,
+        JsonNode payload,
         NotificationStatus status,
         Integer retryCount,
         Instant scheduledTime,
