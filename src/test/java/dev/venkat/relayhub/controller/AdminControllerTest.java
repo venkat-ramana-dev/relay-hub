@@ -2,6 +2,7 @@ package dev.venkat.relayhub.controller;
 
 import dev.venkat.relayhub.dto.request.AuthRegisterRequest;
 import dev.venkat.relayhub.enums.Role;
+import dev.venkat.relayhub.service.AdminService;
 import dev.venkat.relayhub.service.JwtService;
 import dev.venkat.relayhub.service.UserService;
 import dev.venkat.relayhub.service.MyUserDetailsService;
@@ -33,6 +34,9 @@ class AdminControllerTest {
 
     @MockitoBean
     private UserService userService;
+
+    @MockitoBean
+    private AdminService adminService;
 
     @MockitoBean
     private JwtService jwtService;

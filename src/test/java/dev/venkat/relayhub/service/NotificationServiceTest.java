@@ -10,6 +10,7 @@ import dev.venkat.relayhub.entity.Notification;
 import dev.venkat.relayhub.enums.NotificationStatus;
 import dev.venkat.relayhub.entity.User;
 import dev.venkat.relayhub.exception.UserNotFoundException;
+import dev.venkat.relayhub.mapper.NotificationMapper;
 import dev.venkat.relayhub.repository.IdempotencyRecordRepository;
 import dev.venkat.relayhub.repository.NotificationRepository;
 import dev.venkat.relayhub.repository.UserRepository;
@@ -49,6 +50,9 @@ class NotificationServiceTest {
 
     @InjectMocks
     private NotificationService notificationService;
+
+    @Mock
+    private NotificationMapper notificationMapper;
 
     @Nested
     @DisplayName("schedule() Tests")
@@ -105,9 +109,13 @@ class NotificationServiceTest {
                     .notification(cachedNotification)
                     .build();
 
+            NotificationResponse dummyResponse = new NotificationResponse(100L, null, null, null, null, null, null, null, null, null);
+
             when(userRepository.findByEmail(USER_EMAIL)).thenReturn(Optional.of(testUser));
             when(idempotencyRepository.findByKeyNameAndUser(IDEMPOTENCY_KEY, testUser))
                     .thenReturn(Optional.of(existingRecord));
+
+            when(notificationMapper.mapToResponse(cachedNotification)).thenReturn(dummyResponse);
 
             // Act
             NotificationResponse response = notificationService.schedule(request, USER_EMAIL, IDEMPOTENCY_KEY);
@@ -127,6 +135,8 @@ class NotificationServiceTest {
             // Arrange
             Notification savedNotification = Notification.builder().id(200L).status(NotificationStatus.PENDING).build();
 
+            NotificationResponse dummyResponse = new NotificationResponse(200L, null, null, null, null, null, null, null, null, null);
+
             when(userRepository.findByEmail(USER_EMAIL)).thenReturn(Optional.of(testUser));
 
             when(idempotencyRepository.findByKeyNameAndUser(IDEMPOTENCY_KEY, testUser))
@@ -134,6 +144,8 @@ class NotificationServiceTest {
 
             when(notificationRepository.save(any(Notification.class)))
                     .thenReturn(savedNotification);
+
+            when(notificationMapper.mapToResponse(savedNotification)).thenReturn(dummyResponse);
 
             // Act
             NotificationResponse response = notificationService.schedule(request, USER_EMAIL, IDEMPOTENCY_KEY);
@@ -157,8 +169,10 @@ class NotificationServiceTest {
         @DisplayName("Should recover gracefully when a DB race condition occurs during save")
         void schedule_WhenRaceConditionOccurs_CatchesExceptionAndReturnsExisting() {
             // Arrange
-            Notification savedNotification = Notification.builder().id(300L).build();
-            Notification raceWonNotification = Notification.builder().id(999L).build();
+            Notification raceWonNotification = Notification.builder().id(300L).build();
+            Notification savedNotification = Notification.builder().id(999L).build();
+
+            NotificationResponse dummyResponse = new NotificationResponse(300L, null, null, null, null, null, null, null, null, null);
 
             IdempotencyRecord raceWonRecord = IdempotencyRecord.builder()
                     .notification(raceWonNotification)
@@ -178,13 +192,15 @@ class NotificationServiceTest {
             when(idempotencyRepository.save(any(IdempotencyRecord.class)))
                     .thenThrow(new DataIntegrityViolationException("Unique index or primary key violation"));
 
+            when(notificationMapper.mapToResponse(raceWonNotification)).thenReturn(dummyResponse);
+
             // Act
             NotificationResponse response = notificationService.schedule(request, USER_EMAIL, IDEMPOTENCY_KEY);
 
             // Assert
             assertNotNull(response);
             // It should return the ID of the notification that WON the race, not the one we tried to save
-            assertEquals(999L, response.id());
+            assertEquals(300L, response.id());
 
             // Verify we attempted to save, but handled the failure gracefully
             verify(idempotencyRepository, times(1)).save(any(IdempotencyRecord.class));
@@ -227,9 +243,15 @@ class NotificationServiceTest {
         @Test
         @DisplayName("Should return mapped response when notification is found")
         void getNotification_WhenFound_ReturnsResponse() {
+            NotificationResponse dummyResponse = new NotificationResponse(
+                    NOTIFICATION_ID, "https://webhook.example.com", null, NotificationStatus.PENDING, 0, null, null, null, null, null
+            );
+
             // Arrange
             when(notificationRepository.findByIdAndUser_Email(NOTIFICATION_ID, USER_EMAIL))
                     .thenReturn(Optional.of(dbNotification));
+
+            when(notificationMapper.mapToResponse(dbNotification)).thenReturn(dummyResponse);
 
             // Act
             NotificationResponse response = notificationService.getNotification(NOTIFICATION_ID, USER_EMAIL);
