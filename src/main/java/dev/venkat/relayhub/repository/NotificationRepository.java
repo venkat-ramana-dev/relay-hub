@@ -1,6 +1,7 @@
 package dev.venkat.relayhub.repository;
 
 import dev.venkat.relayhub.entity.Notification;
+import dev.venkat.relayhub.enums.NotificationStatus;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
@@ -52,4 +53,5 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
             @Param("cutoffTime") Instant cutoffTime, @Param("batchSize") int batchSize
     );
 
+    long countByStatus(NotificationStatus status);
 }

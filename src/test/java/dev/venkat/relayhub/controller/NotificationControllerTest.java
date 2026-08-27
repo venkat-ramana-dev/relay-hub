@@ -18,6 +18,8 @@ import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import tools.jackson.databind.ObjectMapper;
+
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 
 
@@ -33,6 +35,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @WebMvcTest(NotificationController.class)
 @AutoConfigureMockMvc
 class NotificationControllerTest {
+
+    @Autowired
+    private ObjectMapper objectMapper;
 
     @Autowired
     private MockMvc mockMvc;
@@ -99,7 +104,7 @@ class NotificationControllerTest {
         NotificationResponse mockResponse = new NotificationResponse(
                 100L,
                 "https://webhook.site",
-                "{\"msg\":\"hello\"}",
+                objectMapper.readTree("{\"msg\":\"hello\"}"),
                 NotificationStatus.PENDING, // Ensuring status is PENDING as requested
                 0,
                 Instant.now(),
@@ -141,7 +146,7 @@ class NotificationControllerTest {
         NotificationResponse mockResponse = new NotificationResponse(
                 notificationId,
                 "https://webhook.site",
-                "{\"msg\":\"hello\"}",
+                objectMapper.readTree("{\"msg\":\"hello\"}"),
                 NotificationStatus.PENDING,
                 0,
                 Instant.now(),
