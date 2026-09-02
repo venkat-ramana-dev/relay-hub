@@ -9,11 +9,13 @@ import dev.venkat.relayhub.entity.IdempotencyRecord;
 import dev.venkat.relayhub.entity.Notification;
 import dev.venkat.relayhub.enums.NotificationStatus;
 import dev.venkat.relayhub.entity.User;
+import dev.venkat.relayhub.exception.UnsafeWebhookUrlException;
 import dev.venkat.relayhub.exception.UserNotFoundException;
 import dev.venkat.relayhub.mapper.NotificationMapper;
 import dev.venkat.relayhub.repository.IdempotencyRecordRepository;
 import dev.venkat.relayhub.repository.NotificationRepository;
 import dev.venkat.relayhub.repository.UserRepository;
+import dev.venkat.relayhub.security.WebhookUrlValidator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -53,6 +55,9 @@ class NotificationServiceTest {
 
     @Mock
     private NotificationMapper notificationMapper;
+
+    @Mock
+    private WebhookUrlValidator webhookUrlValidator;
 
     @Nested
     @DisplayName("schedule() Tests")
@@ -204,6 +209,39 @@ class NotificationServiceTest {
 
             // Verify we attempted to save, but handled the failure gracefully
             verify(idempotencyRepository, times(1)).save(any(IdempotencyRecord.class));
+        }
+
+        @Test
+        @DisplayName("Should reject unsafe webhook URL")
+        void shouldRejectUnsafeWebhookUrl() throws Exception {
+            ObjectMapper objectMapper = new ObjectMapper();
+
+            JsonNode dummyPayload =
+                    objectMapper.readTree("{\"message\": \"Hello\"}");
+
+            ScheduleNotificationRequest request = new ScheduleNotificationRequest(
+                    "http://127.0.0.1:8080/internal",
+                    dummyPayload,
+                    Instant.now()
+            );
+
+            doThrow(new UnsafeWebhookUrlException("Target URL resolves to a restricted network address"))
+                    .when(webhookUrlValidator)
+                    .validate(request.targetUrl());
+
+            assertThrows(
+                    UnsafeWebhookUrlException.class,
+                    () -> notificationService.schedule(
+                            request,
+                            USER_EMAIL,
+                            IDEMPOTENCY_KEY
+                    )
+            );
+
+            verify(webhookUrlValidator).validate(request.targetUrl());
+            verify(userRepository, never()).findByEmail(anyString());
+            verify(idempotencyRepository, never()).findByKeyNameAndUser(any(), any());
+            verify(notificationRepository, never()).save(any());
         }
     }
 
