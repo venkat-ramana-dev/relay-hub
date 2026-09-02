@@ -6,6 +6,7 @@ import dev.venkat.relayhub.entity.IdempotencyRecord;
 import dev.venkat.relayhub.entity.Notification;
 import dev.venkat.relayhub.entity.User;
 import dev.venkat.relayhub.enums.NotificationStatus;
+import dev.venkat.relayhub.exception.IdempotencyRaceRecoveryException;
 import dev.venkat.relayhub.exception.NotificationNotFoundException;
 import dev.venkat.relayhub.exception.UserNotFoundException;
 import dev.venkat.relayhub.mapper.NotificationMapper;
@@ -29,12 +30,11 @@ public class NotificationService {
 
     private final NotificationRepository notificationRepository;
     private final UserRepository userRepository;
-    private final NotificationHistoryService historyService;
     private final IdempotencyRecordRepository idempotencyRepository;
     private final NotificationMapper notificationMapper;
     private final WebhookUrlValidator webhookUrlValidator;
+    private final NotificationCreationService notificationCreationService;
 
-    @Transactional
     public NotificationResponse schedule(ScheduleNotificationRequest request, String userEmail, String idempotencyKey) {
 
         webhookUrlValidator.validate(request.targetUrl());
@@ -50,37 +50,27 @@ public class NotificationService {
             return notificationMapper.mapToResponse(existingRecord.get().getNotification());
         }
 
-        Notification notification = Notification.builder()
-                .user(user)
-                .targetUrl(request.targetUrl())
-                .payload(request.payload().toString())
-                .status(NotificationStatus.PENDING)
-                .retryCount(0)
-                .scheduledTime(request.scheduledTime() != null ? request.scheduledTime() : Instant.now())
-                .build();
-
         try {
-            Notification saved = notificationRepository.save(notification);
-
-            IdempotencyRecord record = IdempotencyRecord.builder()
-                    .keyName(idempotencyKey)
-                    .user(user)
-                    .notification(saved)
-                    .build();
-            idempotencyRepository.save(record);
-
-            historyService.logHistory(saved, null, saved.getStatus(), "Notification scheduled by client", null);
+            Notification saved =
+                    notificationCreationService.createNotification(
+                            user,
+                            request,
+                            idempotencyKey);
 
             return notificationMapper.mapToResponse(saved);
 
         } catch (DataIntegrityViolationException e) {
 
-            log.warn("Race condition caught for key: {}. Fetching the successfully saved record.", idempotencyKey);
+            log.warn(
+                    "Idempotency race detected for key: {}",
+                    idempotencyKey);
 
-            IdempotencyRecord raceRecord = idempotencyRepository.findByKeyNameAndUser(idempotencyKey, user)
-                    .orElseThrow(() -> new RuntimeException("Critical failure recovering idempotency key"));
+            IdempotencyRecord raceRecord =
+                    idempotencyRepository.findByKeyNameAndUser(idempotencyKey, user)
+                            .orElseThrow(() -> new IdempotencyRaceRecoveryException("Failed to recover idempotency race for key: " + idempotencyKey));
 
-            return notificationMapper.mapToResponse(raceRecord.getNotification());
+            return notificationMapper.mapToResponse(
+                    raceRecord.getNotification());
         }
     }
 
