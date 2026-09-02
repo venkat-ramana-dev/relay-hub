@@ -5,9 +5,11 @@ import dev.venkat.relayhub.entity.IdempotencyRecord;
 import dev.venkat.relayhub.entity.Notification;
 import dev.venkat.relayhub.entity.User;
 import dev.venkat.relayhub.enums.NotificationStatus;
+import dev.venkat.relayhub.exception.IdempotencyConflictException;
 import dev.venkat.relayhub.repository.IdempotencyRecordRepository;
 import dev.venkat.relayhub.repository.NotificationRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -48,7 +50,11 @@ public class NotificationCreationService {
                 .notification(saved)
                 .build();
 
-        idempotencyRepository.save(record);
+        try {
+            idempotencyRepository.saveAndFlush(record);
+        } catch (DataIntegrityViolationException e) {
+            throw new IdempotencyConflictException("Idempotency key already exists");
+        }
 
         historyService.logHistory(
                 saved,

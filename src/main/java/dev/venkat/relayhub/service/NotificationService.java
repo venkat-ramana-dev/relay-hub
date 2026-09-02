@@ -6,6 +6,7 @@ import dev.venkat.relayhub.entity.IdempotencyRecord;
 import dev.venkat.relayhub.entity.Notification;
 import dev.venkat.relayhub.entity.User;
 import dev.venkat.relayhub.enums.NotificationStatus;
+import dev.venkat.relayhub.exception.IdempotencyConflictException;
 import dev.venkat.relayhub.exception.IdempotencyRaceRecoveryException;
 import dev.venkat.relayhub.exception.NotificationNotFoundException;
 import dev.venkat.relayhub.exception.UserNotFoundException;
@@ -59,18 +60,14 @@ public class NotificationService {
 
             return notificationMapper.mapToResponse(saved);
 
-        } catch (DataIntegrityViolationException e) {
+        } catch (IdempotencyConflictException e) {
 
-            log.warn(
-                    "Idempotency race detected for key: {}",
-                    idempotencyKey);
+            log.warn("Idempotency race detected for key: {}", idempotencyKey);
 
-            IdempotencyRecord raceRecord =
-                    idempotencyRepository.findByKeyNameAndUser(idempotencyKey, user)
+            IdempotencyRecord raceRecord = idempotencyRepository.findByKeyNameAndUser(idempotencyKey, user)
                             .orElseThrow(() -> new IdempotencyRaceRecoveryException("Failed to recover idempotency race for key: " + idempotencyKey));
 
-            return notificationMapper.mapToResponse(
-                    raceRecord.getNotification());
+            return notificationMapper.mapToResponse(raceRecord.getNotification());
         }
     }
 
