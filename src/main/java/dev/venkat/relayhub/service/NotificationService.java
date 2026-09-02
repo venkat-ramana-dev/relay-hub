@@ -12,6 +12,7 @@ import dev.venkat.relayhub.mapper.NotificationMapper;
 import dev.venkat.relayhub.repository.IdempotencyRecordRepository;
 import dev.venkat.relayhub.repository.NotificationRepository;
 import dev.venkat.relayhub.repository.UserRepository;
+import dev.venkat.relayhub.security.WebhookUrlValidator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -31,9 +32,12 @@ public class NotificationService {
     private final NotificationHistoryService historyService;
     private final IdempotencyRecordRepository idempotencyRepository;
     private final NotificationMapper notificationMapper;
+    private final WebhookUrlValidator webhookUrlValidator;
 
     @Transactional
     public NotificationResponse schedule(ScheduleNotificationRequest request, String userEmail, String idempotencyKey) {
+
+        webhookUrlValidator.validate(request.targetUrl());
 
         log.info("Scheduling Notification for user: {}", userEmail);
 
