@@ -6,6 +6,8 @@ import dev.venkat.relayhub.enums.NotificationStatus;
 import dev.venkat.relayhub.mapper.NotificationMapper;
 import dev.venkat.relayhub.repository.NotificationRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,11 +31,8 @@ public class AdminService {
     }
 
     @Transactional(readOnly = true)
-    public List<NotificationResponse> getAllSystemNotifications() {
-
-        return notificationRepository.findAll()
-                .stream()
-                .map(notificationMapper::mapToResponse)
-                .toList();
+    public Page<NotificationResponse> getAllSystemNotifications(Pageable pageable) {
+        return notificationRepository.findAll(pageable)
+                .map(notificationMapper::mapToResponse);
     }
 }

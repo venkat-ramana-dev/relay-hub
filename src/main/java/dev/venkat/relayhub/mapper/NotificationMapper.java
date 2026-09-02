@@ -16,12 +16,16 @@ public class NotificationMapper {
     private final ObjectMapper objectMapper;
 
     public NotificationResponse mapToResponse(Notification notification) {
-        JsonNode payloadNode = null;
+        JsonNode payloadNode;
 
         try {
             payloadNode = objectMapper.readTree(notification.getPayload());
         } catch (Exception e) {
             log.error("Failed to parse JSON payload for notification {}", notification.getId(), e);
+            throw new IllegalStateException(
+                    "Notification contains invalid JSON payload",
+                    e
+            );
         }
 
         return new NotificationResponse(
