@@ -9,6 +9,10 @@ import dev.venkat.relayhub.service.AdminService;
 import dev.venkat.relayhub.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -49,7 +53,13 @@ public class AdminController {
     }
 
     @GetMapping("/notifications")
-    public ResponseEntity<List<NotificationResponse>> getAllNotifications() {
-        return ResponseEntity.ok(adminService.getAllSystemNotifications());
+    public ResponseEntity<Page<NotificationResponse>> getAllNotifications(
+            @PageableDefault(
+                    size = 50,
+                    sort = "createdAt",
+                    direction = Sort.Direction.DESC
+            ) Pageable pageable) {
+
+        return ResponseEntity.ok(adminService.getAllSystemNotifications(pageable));
     }
 }
