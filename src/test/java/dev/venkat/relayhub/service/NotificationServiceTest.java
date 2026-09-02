@@ -48,7 +48,7 @@ class NotificationServiceTest {
     private IdempotencyRecordRepository idempotencyRepository;
 
     @Mock
-    private NotificationHistoryService historyService;
+    private NotificationCreationService notificationCreationService;
 
     @InjectMocks
     private NotificationService notificationService;
@@ -101,7 +101,7 @@ class NotificationServiceTest {
 
             // Verify downstream dependencies were untouched
             verify(idempotencyRepository, never()).findByKeyNameAndUser(any(), any());
-            verify(notificationRepository, never()).save(any());
+            verify(notificationCreationService, never()).createNotification(any(), any(), any());
         }
 
         @Test
@@ -129,86 +129,122 @@ class NotificationServiceTest {
             assertNotNull(response);
             assertEquals(100L, response.id()); // Assuming response maps the ID
 
-            // Verify we short-circuited and didn't save anything new
-            verify(notificationRepository, never()).save(any());
-            verify(historyService, never()).logHistory(any(), any(), any(), any(), any());
+            verify(notificationCreationService, never()).createNotification(any(), any(), any());
         }
 
         @Test
-        @DisplayName("Should save and return new notification for a fresh idempotency key")
-        void schedule_WhenNewRequest_SavesAndReturnsResponse() {
+        @DisplayName("Should create and return new notification for a fresh idempotency key")
+        void schedule_WhenNewRequest_CreatesAndReturnsResponse() {
             // Arrange
-            Notification savedNotification = Notification.builder().id(200L).status(NotificationStatus.PENDING).build();
+            Notification savedNotification = Notification.builder()
+                    .id(200L)
+                    .status(NotificationStatus.PENDING)
+                    .build();
 
-            NotificationResponse dummyResponse = new NotificationResponse(200L, null, null, null, null, null, null, null, null, null);
+            NotificationResponse dummyResponse = new NotificationResponse(
+                    200L, null, null, null, null,
+                    null, null, null, null, null
+            );
 
-            when(userRepository.findByEmail(USER_EMAIL)).thenReturn(Optional.of(testUser));
+            when(userRepository.findByEmail(USER_EMAIL))
+                    .thenReturn(Optional.of(testUser));
 
-            when(idempotencyRepository.findByKeyNameAndUser(IDEMPOTENCY_KEY, testUser))
+            when(idempotencyRepository.findByKeyNameAndUser(
+                    IDEMPOTENCY_KEY, testUser))
                     .thenReturn(Optional.empty());
 
-            when(notificationRepository.save(any(Notification.class)))
-                    .thenReturn(savedNotification);
+            when(notificationCreationService.createNotification(
+                    testUser,
+                    request,
+                    IDEMPOTENCY_KEY
+            )).thenReturn(savedNotification);
 
-            when(notificationMapper.mapToResponse(savedNotification)).thenReturn(dummyResponse);
+            when(notificationMapper.mapToResponse(savedNotification))
+                    .thenReturn(dummyResponse);
 
             // Act
-            NotificationResponse response = notificationService.schedule(request, USER_EMAIL, IDEMPOTENCY_KEY);
+            NotificationResponse response = notificationService.schedule(
+                    request,
+                    USER_EMAIL,
+                    IDEMPOTENCY_KEY
+            );
 
             // Assert
             assertNotNull(response);
             assertEquals(200L, response.id());
 
-            // Verify proper persistence and history logging occurred
-            verify(idempotencyRepository, times(1)).save(any(IdempotencyRecord.class));
-            verify(historyService, times(1)).logHistory(
-                    eq(savedNotification),
-                    isNull(),
-                    eq(NotificationStatus.PENDING),
-                    anyString(),
-                    isNull()
-            );
+            verify(notificationCreationService, times(1))
+                    .createNotification(
+                            testUser,
+                            request,
+                            IDEMPOTENCY_KEY
+                    );
         }
 
         @Test
-        @DisplayName("Should recover gracefully when a DB race condition occurs during save")
-        void schedule_WhenRaceConditionOccurs_CatchesExceptionAndReturnsExisting() {
+        @DisplayName("Should return winning notification when idempotency race occurs")
+        void schedule_WhenRaceConditionOccurs_ReturnsWinningNotification() {
             // Arrange
-            Notification raceWonNotification = Notification.builder().id(300L).build();
-            Notification savedNotification = Notification.builder().id(999L).build();
+            Notification raceWonNotification = Notification.builder()
+                    .id(300L)
+                    .status(NotificationStatus.PENDING)
+                    .build();
 
-            NotificationResponse dummyResponse = new NotificationResponse(300L, null, null, null, null, null, null, null, null, null);
+            NotificationResponse dummyResponse = new NotificationResponse(
+                    300L, null, null, NotificationStatus.PENDING,
+                    0, null, null, null, null, null
+            );
 
             IdempotencyRecord raceWonRecord = IdempotencyRecord.builder()
+                    .keyName(IDEMPOTENCY_KEY)
+                    .user(testUser)
                     .notification(raceWonNotification)
                     .build();
 
-            when(userRepository.findByEmail(USER_EMAIL)).thenReturn(Optional.of(testUser));
+            when(userRepository.findByEmail(USER_EMAIL))
+                    .thenReturn(Optional.of(testUser));
 
-            // Magic Mockito feature: Return empty the first time, return the record the second time!
-            when(idempotencyRepository.findByKeyNameAndUser(IDEMPOTENCY_KEY, testUser))
-                    .thenReturn(Optional.empty())       // First call (initial check)
-                    .thenReturn(Optional.of(raceWonRecord)); // Second call (inside the catch block)
+            when(idempotencyRepository.findByKeyNameAndUser(
+                    IDEMPOTENCY_KEY, testUser))
+                    .thenReturn(Optional.empty())
+                    .thenReturn(Optional.of(raceWonRecord));
 
-            when(notificationRepository.save(any(Notification.class)))
-                    .thenReturn(savedNotification);
+            when(notificationCreationService.createNotification(
+                    testUser,
+                    request,
+                    IDEMPOTENCY_KEY
+            )).thenThrow(
+                    new DataIntegrityViolationException(
+                            "Unique constraint violation"
+                    )
+            );
 
-            // Simulate the Unique Constraint Violation in the database
-            when(idempotencyRepository.save(any(IdempotencyRecord.class)))
-                    .thenThrow(new DataIntegrityViolationException("Unique index or primary key violation"));
-
-            when(notificationMapper.mapToResponse(raceWonNotification)).thenReturn(dummyResponse);
+            when(notificationMapper.mapToResponse(raceWonNotification))
+                    .thenReturn(dummyResponse);
 
             // Act
-            NotificationResponse response = notificationService.schedule(request, USER_EMAIL, IDEMPOTENCY_KEY);
+            NotificationResponse response = notificationService.schedule(
+                    request,
+                    USER_EMAIL,
+                    IDEMPOTENCY_KEY
+            );
 
             // Assert
             assertNotNull(response);
-            // It should return the ID of the notification that WON the race, not the one we tried to save
             assertEquals(300L, response.id());
 
-            // Verify we attempted to save, but handled the failure gracefully
-            verify(idempotencyRepository, times(1)).save(any(IdempotencyRecord.class));
+            verify(notificationCreationService, times(1))
+                    .createNotification(
+                            testUser,
+                            request,
+                            IDEMPOTENCY_KEY
+                    );
+
+            verify(idempotencyRepository, times(2))
+                    .findByKeyNameAndUser(
+                            IDEMPOTENCY_KEY,
+                            testUser
+                    );
         }
 
         @Test
@@ -241,7 +277,7 @@ class NotificationServiceTest {
             verify(webhookUrlValidator).validate(request.targetUrl());
             verify(userRepository, never()).findByEmail(anyString());
             verify(idempotencyRepository, never()).findByKeyNameAndUser(any(), any());
-            verify(notificationRepository, never()).save(any());
+            verify(notificationCreationService, never()).createNotification(any(), any(), any());
         }
     }
 
