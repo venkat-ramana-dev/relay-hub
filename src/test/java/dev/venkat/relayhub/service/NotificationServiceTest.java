@@ -1,6 +1,7 @@
 package dev.venkat.relayhub.service;
 
 
+import dev.venkat.relayhub.exception.IdempotencyConflictException;
 import dev.venkat.relayhub.exception.NotificationNotFoundException;
 
 import dev.venkat.relayhub.dto.request.ScheduleNotificationRequest;
@@ -214,8 +215,8 @@ class NotificationServiceTest {
                     request,
                     IDEMPOTENCY_KEY
             )).thenThrow(
-                    new DataIntegrityViolationException(
-                            "Unique constraint violation"
+                    new IdempotencyConflictException(
+                            "Idempotency key already exists"
                     )
             );
 

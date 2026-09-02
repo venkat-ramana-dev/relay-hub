@@ -5,6 +5,7 @@ import dev.venkat.relayhub.entity.IdempotencyRecord;
 import dev.venkat.relayhub.entity.Notification;
 import dev.venkat.relayhub.entity.User;
 import dev.venkat.relayhub.enums.NotificationStatus;
+import dev.venkat.relayhub.exception.IdempotencyConflictException;
 import dev.venkat.relayhub.repository.IdempotencyRecordRepository;
 import dev.venkat.relayhub.repository.NotificationRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -99,7 +100,7 @@ class NotificationCreationServiceTest {
                 .save(any(Notification.class));
 
         verify(idempotencyRepository, times(1))
-                .save(any(IdempotencyRecord.class));
+                .saveAndFlush(any(IdempotencyRecord.class));
 
         verify(historyService, times(1))
                 .logHistory(
@@ -179,7 +180,7 @@ class NotificationCreationServiceTest {
                 ArgumentCaptor.forClass(IdempotencyRecord.class);
 
         verify(idempotencyRepository)
-                .save(captor.capture());
+                .saveAndFlush(captor.capture());
 
         IdempotencyRecord record = captor.getValue();
 
@@ -200,7 +201,7 @@ class NotificationCreationServiceTest {
         when(notificationRepository.save(any(Notification.class)))
                 .thenReturn(savedNotification);
 
-        when(idempotencyRepository.save(any(IdempotencyRecord.class)))
+        when(idempotencyRepository.saveAndFlush(any(IdempotencyRecord.class)))
                 .thenThrow(
                         new DataIntegrityViolationException(
                                 "Unique constraint violation"
@@ -209,7 +210,7 @@ class NotificationCreationServiceTest {
 
         // Act & Assert
         assertThrows(
-                DataIntegrityViolationException.class,
+                IdempotencyConflictException.class,
                 () -> notificationCreationService.createNotification(
                         testUser,
                         request,
@@ -221,6 +222,9 @@ class NotificationCreationServiceTest {
                 .save(any(Notification.class));
 
         verify(idempotencyRepository, times(1))
-                .save(any(IdempotencyRecord.class));
+                .saveAndFlush(any(IdempotencyRecord.class));
+
+        verify(historyService, never())
+                .logHistory(any(), any(), any(), any(), any());
     }
 }
