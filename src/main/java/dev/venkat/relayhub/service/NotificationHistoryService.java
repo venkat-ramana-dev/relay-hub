@@ -6,8 +6,6 @@ import dev.venkat.relayhub.enums.NotificationStatus;
 import dev.venkat.relayhub.repository.NotificationHistoryRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor

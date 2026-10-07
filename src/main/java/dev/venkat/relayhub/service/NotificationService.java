@@ -5,7 +5,6 @@ import dev.venkat.relayhub.dto.response.NotificationResponse;
 import dev.venkat.relayhub.entity.IdempotencyRecord;
 import dev.venkat.relayhub.entity.Notification;
 import dev.venkat.relayhub.entity.User;
-import dev.venkat.relayhub.enums.NotificationStatus;
 import dev.venkat.relayhub.exception.IdempotencyConflictException;
 import dev.venkat.relayhub.exception.IdempotencyRaceRecoveryException;
 import dev.venkat.relayhub.exception.NotificationNotFoundException;
@@ -17,11 +16,9 @@ import dev.venkat.relayhub.repository.UserRepository;
 import dev.venkat.relayhub.security.WebhookUrlValidator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Instant;
 import java.util.Optional;
 
 @Slf4j

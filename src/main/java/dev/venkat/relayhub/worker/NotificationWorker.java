@@ -2,7 +2,6 @@ package dev.venkat.relayhub.worker;
 
 import dev.venkat.relayhub.dto.internal.DeliveryResult;
 import dev.venkat.relayhub.entity.Notification;
-import dev.venkat.relayhub.repository.NotificationRepository;
 import dev.venkat.relayhub.service.DeliveryService;
 import dev.venkat.relayhub.service.NotificationProcessor;
 import lombok.RequiredArgsConstructor;
@@ -10,9 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.List;
 
 @Component

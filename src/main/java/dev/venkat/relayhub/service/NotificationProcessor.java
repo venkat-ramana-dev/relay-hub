@@ -61,6 +61,20 @@ public class NotificationProcessor {
             return;
         }
 
+        if (result.statusCode()  != null &&
+                (result.statusCode()  == 408 ||
+                        result.statusCode()  == 429 ||
+                        result.statusCode()  >= 500)) {
+
+            if (notification.getRetryCount() >= maxRetries) {
+                markDead(notification, result);
+                return;
+            }
+
+            handleRetry(notification, result);
+            return;
+        }
+
         if (result.statusCode() != null && result.statusCode() >= 400 && result.statusCode() < 500) {
             markDead(notification, result);
             return;
