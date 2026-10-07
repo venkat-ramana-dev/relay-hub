@@ -17,7 +17,7 @@ import java.util.UUID;
 @Component
 @RequiredArgsConstructor
 @Slf4j
-@Profile({"local"})
+@Profile({"dev", "local"})
 public class AdminSeeder implements CommandLineRunner {
 
     private final UserRepository userRepository;
