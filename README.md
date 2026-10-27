@@ -114,20 +114,18 @@ A notification starts as `PENDING` and is claimed by a worker when it becomes el
 
 ```mermaid
 stateDiagram-v2
+    stateDiagram-v2
     [*] --> PENDING
-
+    
     PENDING --> PROCESSING : Worker claims notification
     RETRYING --> PROCESSING : Retry becomes eligible
-
+    
     PROCESSING --> SUCCESS : Delivery succeeds
-    PROCESSING --> RETRYING : Retryable failure
-    PROCESSING --> DEAD : Permanent failure
-    PROCESSING --> RETRYING : Processing timeout
-
-    RETRYING --> DEAD : Maximum retries reached
-    PROCESSING --> DEAD : Maximum retries reached
+    PROCESSING --> DEAD : Permanent failure (4xx)
+    PROCESSING --> DEAD : Max retries reached
+    PROCESSING --> RETRYING : Retryable failure (retries remain)
+    PROCESSING --> RETRYING : Processing timeout (retries remain)
 ```
-
 
 The normal successful path is `PENDING → PROCESSING → SUCCESS`. Temporary failures can move through `RETRYING`, while permanent failures eventually reach `DEAD`. Notification history records these transitions.
 

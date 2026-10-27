@@ -59,12 +59,10 @@ stateDiagram-v2
     RETRYING --> PROCESSING : Retry becomes eligible
 
     PROCESSING --> SUCCESS : Delivery succeeds
-    PROCESSING --> RETRYING : Retryable failure
-    PROCESSING --> DEAD : Permanent failure
-    PROCESSING --> RETRYING : Processing timeout
-
-    RETRYING --> DEAD : Maximum retries reached
-    PROCESSING --> DEAD : Maximum retries reached
+    PROCESSING --> DEAD : Permanent failure (4xx)
+    PROCESSING --> DEAD : Max retries reached
+    PROCESSING --> RETRYING : Retryable failure (retries remain)
+    PROCESSING --> RETRYING : Processing timeout (retries remain)
 ```
 
 The normal successful path is:
