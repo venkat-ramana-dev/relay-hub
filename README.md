@@ -113,19 +113,20 @@ The API and worker components share PostgreSQL as the source of truth. The worke
 A notification starts as `PENDING` and is claimed by a worker when it becomes eligible for processing.
 
 ```mermaid
-stateDiagram-v2
-    [*] --> PENDING
+flowchart TD
+    A([Start]) --> B[PENDING]
 
-    PENDING --> PROCESSING : Worker claims notification
-    RETRYING --> PROCESSING : Retry becomes eligible
+    B -->|Worker claims notification| C[PROCESSING]
+    D[RETRYING] -->|Retry becomes eligible| C
 
-    PROCESSING --> SUCCESS : Delivery succeeds
-    PROCESSING --> RETRYING : Retryable failure
-    PROCESSING --> DEAD : Permanent failure
-    PROCESSING --> RETRYING : Processing timeout
+    C -->|Delivery succeeds| E([SUCCESS])
+    C -->|HTTP 4xx failure| F([DEAD])
+    C -->|Retryable failure, retries remain| D
+    C -->|Maximum retries reached| F
 
-    RETRYING --> DEAD : Maximum retries reached
-    PROCESSING --> DEAD : Maximum retries reached
+    C -.->|Processing timeout| G{Retries remaining?}
+    G -->|Yes| D
+    G -->|No| F
 ```
 
 
